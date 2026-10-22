@@ -450,7 +450,7 @@ function renderSeries(){
       <div class="bar"><i style="width:${Math.round(100 * have / total)}%"></i></div>
       <div class="seqs">${allSeq.map(q => `<span class="seq ${missingSeq.has(q) ? "miss" : "have"}" title="${missingSeq.has(q) ? "Missing" : "You have this"}">${esc(q)}</span>`).join("")}</div>
       ${s.missing.length ? `<details class="more"><summary>${s.missing.length} to find next</summary><ul class="misslist">${s.missing.map(m =>
-        `<li><span class="s">#${esc(m.sequence)}</span><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.title || m.asin)}</a> <span class="y">${esc(m.year || "")}</span></li>`).join("")}</ul></details>`
+        `<li><span class="s">#${esc(m.sequence)}</span><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.title || `${s.name} #${m.sequence}`)}</a> <span class="y">${esc(m.year || "")}</span></li>`).join("")}</ul></details>`
         : `<div class="muted" style="font-size:13px">Complete – you have every book.</div>`}
     </div>`;
   }).join("") : `<div class="pad"><div class="empty">${S.last_scan ? "No series in your library yet." : "Series show up after the first check."}</div></div>`;

@@ -46,7 +46,10 @@ class H(BaseHTTPRequestHandler):
         q = dict(urllib.parse.parse_qsl(u.query))
         if u.path == "/1.0/catalog/products":
             if "asins" in q:
-                return self._send({"products": [PRODUCTS[a] for a in q["asins"].split(",") if a in PRODUCTS]})
+                # Like the real API: batch lookups only include the title when product_desc is requested.
+                with_title = "product_desc" in q.get("response_groups", "")
+                return self._send({"products": [{k: v for k, v in PRODUCTS[a].items() if with_title or k != "title"}
+                                                for a in q["asins"].split(",") if a in PRODUCTS]})
             kw = fold(q.get("keywords", ""))
             hits = [p for p in PRODUCTS.values() if fold(p["title"]) in kw and "Box" not in p["title"]]
             hits.sort(key=lambda p: -len(p["title"]))

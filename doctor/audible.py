@@ -18,6 +18,8 @@ UA = "Mozilla/5.0 (abs-library-doctor)"
 TLD = {"us": "com", "uk": "co.uk", "ca": "ca", "au": "com.au", "de": "de", "fr": "fr",
        "it": "it", "es": "es", "in": "in", "jp": "co.jp"}
 WEEK = 7 * 24 * 3600
+# Audible leaves "title" out of some responses unless product_desc is asked for too.
+GROUPS = "contributors,product_attrs,product_desc,series"
 _lock = threading.Lock()
 
 
@@ -78,7 +80,7 @@ def search(title, author):
     def fetch():
         data = _get("/1.0/catalog/products", {
             "keywords": f"{title} {author}".strip(), "num_results": 10, "products_sort_by": "Relevance",
-            "response_groups": "contributors,product_attrs,series"})
+            "response_groups": GROUPS})
         out = []
         for p in data.get("products", []):
             out.append({
@@ -89,7 +91,7 @@ def search(title, author):
                            for s in p.get("series") or [] if s.get("asin")],
             })
         return out
-    return _cached(f"search:{config.AUDIBLE_REGION}:{fold(title)}|{fold(author)}", fetch)
+    return _cached(f"search2:{config.AUDIBLE_REGION}:{fold(title)}|{fold(author)}", fetch)
 
 
 def _products(asins):
@@ -98,18 +100,18 @@ def _products(asins):
     for i in range(0, len(asins), 40):
         chunk = asins[i:i + 40]
         try:
-            data = _get("/1.0/catalog/products", {"asins": ",".join(chunk),
-                                                 "response_groups": "contributors,product_attrs,series"})
+            data = _get("/1.0/catalog/products", {"asins": ",".join(chunk), "response_groups": GROUPS})
             prods = data.get("products", [])
         except Exception:
             prods = []
         got = {p.get("asin") for p in prods}
-        # Fallback: one at a time for anything the batch call didn't return.
+        # Fallback: one at a time for anything the batch call didn't return, or returned without a title.
+        prods = [p for p in prods if p.get("title")]
+        got = {p.get("asin") for p in prods}
         for a in chunk:
             if a not in got:
                 try:
-                    prods.append(_get(f"/1.0/catalog/products/{a}",
-                                      {"response_groups": "contributors,product_attrs,series"}).get("product", {}))
+                    prods.append(_get(f"/1.0/catalog/products/{a}", {"response_groups": GROUPS}).get("product", {}))
                 except Exception as e:
                     log.debug("Audible product %s failed: %s", a, e)
         for p in prods:
@@ -141,7 +143,7 @@ def series_books(series_asin):
             books.append({"sequence": seq, "asin": asin, "title": i.get("title", ""), "year": i.get("year", ""),
                           "url": web_url(asin)})
         return {"name": prod.get("title", ""), "asin": series_asin, "books": books}
-    return _cached(f"series:{config.AUDIBLE_REGION}:{series_asin}", fetch)
+    return _cached(f"series2:{config.AUDIBLE_REGION}:{series_asin}", fetch)
 
 
 def find_series(series_name, sample_books):
