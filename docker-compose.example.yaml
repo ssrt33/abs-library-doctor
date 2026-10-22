@@ -1,0 +1,26 @@
+# Example stack for Dockge, Portainer or plain `docker compose up -d`.
+# Copy to compose.yaml, then change ABS_URL, ABS_TOKEN and the host paths on the left of each volume.
+services:
+  abs-library-doctor:
+    image: ghcr.io/ssrt33/abs-library-doctor:latest
+    # build: .                 # use this instead of image: to build from source
+    container_name: abs-library-doctor
+    restart: unless-stopped
+    ports:
+      - "8687:8687"
+    environment:
+      ABS_URL: http://192.168.1.10:13378   # your Audiobookshelf, as this container can reach it
+      ABS_TOKEN: paste-your-api-key-here   # Audiobookshelf > Settings > API Keys
+      # LIBRARIES: audiobooks              # only these libraries (names or ids); empty = all book libraries
+      PATH_MAP: /audiobooks=/audiobooks    # Audiobookshelf's path = this container's path (see README)
+      AUTO_FIX: "true"                     # starting value; you can change it on the page
+      SCAN_EVERY_HOURS: "6"
+      AUDIBLE_REGION: us
+      PUID: "568"                          # TrueNAS "apps" user
+      PGID: "568"
+      TZ: America/Chicago
+      # NOTIFY_URL: https://ntfy.sh/pick-a-long-random-topic-name
+    volumes:
+      - /path/to/audiobooks:/audiobooks             # the SAME folder Audiobookshelf uses for the library
+      - /path/to/abs-library-doctor/trash:/trash    # copies and leftovers go here (outside the library!)
+      - /path/to/abs-library-doctor/config:/config

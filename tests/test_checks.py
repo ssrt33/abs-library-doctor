@@ -1,0 +1,159 @@
+"""Checks against hand-built items shaped like Audiobookshelf's. No network needed: python -m pytest"""
+import itertools
+
+from doctor import checks
+from doctor.textutil import clean_seq, disc_number, split_read_by, strip_unabridged, title_key
+
+_n = itertools.count(1)
+
+
+def item(title, authors, rel, subtitle="", series=(), narrators=(), durs=(100.0,), cover=False, lib="L1"):
+    i = next(_n)
+    return {
+        "id": f"item{i}", "libraryId": lib, "path": f"/audiobooks/{rel}", "relPath": rel, "isFile": False,
+        "isMissing": False, "mediaType": "book", "addedAt": i,
+        "media": {
+            "coverPath": "/x/cover.jpg" if cover else None, "duration": sum(durs), "size": int(sum(durs) * 1000),
+            "metadata": {"title": title, "subtitle": subtitle, "authors": [{"id": a, "name": a} for a in authors],
+                         "narrators": list(narrators),
+                         "series": [{"id": n, "name": n, "sequence": s} for n, s in series]},
+            "audioFiles": [{"ino": f"{i}-{k}", "index": k, "duration": d,
+                            "metadata": {"filename": f"track{k:02d}.mp3", "path": f"/audiobooks/{rel}/track{k:02d}.mp3"}}
+                           for k, d in enumerate(durs, 1)],
+        },
+    }
+
+
+def run(items, **kw):
+    kw.setdefault("lookups", False)
+    kw.setdefault("can_move", True)
+    return checks.run(items, **kw)
+
+
+def kinds(res):
+    return sorted(i["kind"] for i in res["issues"])
+
+
+# ---- text rules
+
+def test_text_rules():
+    assert strip_unabridged("Kill Shot (Unabridged)") == "Kill Shot"
+    assert strip_unabridged("Red War [Unabridged Edition]") == "Red War"
+    assert strip_unabridged("Abridged Thoughts") == "Abridged Thoughts"
+    assert split_read_by("John Grisham read by Dennis Boutsikaris") == ("John Grisham", "Dennis Boutsikaris")
+    assert split_read_by("Stephen King - Narrated by Will Patton") == ("Stephen King", "Will Patton")
+    assert split_read_by("Ready Player Two") is None
+    assert disc_number("The Broker Disc 3") == 3 and disc_number("CD02") == 2 and disc_number("Part 4 of 9") == 4
+    assert disc_number("Legion") is None
+    assert title_key("The Optimal Dose: Restore Your Health (Unabridged)") == "optimal dose"
+    assert clean_seq("08") == "8" and clean_seq("2.5") == "2.5" and clean_seq("1-3") == ""
+
+
+# ---- metadata
+
+def test_unabridged_and_subtitle_are_safe():
+    res = run([item("Kill Shot (Unabridged)", ["Vince Flynn"], "Vince Flynn/Kill Shot"),
+               item("The Optimal Dose: Restore Your Health", ["Judson Somerville"], "J/Optimal",
+                    subtitle="Restore Your Health")])
+    by = {i["kind"]: i for i in res["issues"]}
+    assert by["unabridged"]["safe"] and by["unabridged"]["fix"]["set"] == {"title": "Kill Shot"}
+    assert by["title_subtitle"]["fix"]["set"] == {"title": "The Optimal Dose"}
+
+
+def test_narrator_split_and_credential():
+    res = run([item("The Broker", ["John Grisham read by Dennis Boutsikaris"], "G/The Broker"),
+               item("The Optimal Dose", ["Judson Somerville", "Md"], "J/Optimal")])
+    by = {i["kind"]: i for i in res["issues"]}
+    assert by["narrator_in_author"]["fix"]["set"] == {"authors": ["John Grisham"], "narrators": ["Dennis Boutsikaris"]}
+    assert by["author_credential"]["fix"]["set"] == {"authors": ["Judson Somerville MD"]}
+
+
+def test_series_suffix_merges_toward_plain_name():
+    res = run([item("Memorial Day", ["Vince Flynn"], "V/MD", series=[("Mitch Rapp", "7")]),
+               item("Executive Power", ["Vince Flynn"], "V/EP", series=[("Mitch Rapp Series", "")])])
+    fx = [i for i in res["issues"] if i["kind"] == "series_suffix"]
+    assert len(fx) == 1 and fx[0]["fix"]["set"] == {"series": [["Mitch Rapp", ""]]}
+
+
+def test_series_named_after_book_is_fine_but_subtitle_series_is_not():
+    res = run([item("Legion", ["Brandon Sanderson"], "B/Legion", series=[("Legion", "1")]),
+               item("Kill Shot", ["Vince Flynn"], "V/KS", subtitle="An American Assassin Thriller",
+                    series=[("An American Assassin Thriller", "")])])
+    bad = [i for i in res["issues"] if i["kind"] == "series_is_subtitle"]
+    assert [b["books"][0]["title"] for b in bad] == ["Kill Shot"]
+    assert not bad[0]["safe"]
+
+
+# ---- duplicates and discs
+
+def test_discs_are_not_mistaken_for_copies():
+    # real discs are often the same length; the disc numbers tell them apart
+    parts = [item("The Broker", ["John Grisham"], f"G/The Broker Disc {n}", durs=(4700.0,)) for n in (2, 1, 3)]
+    res = run(parts)
+    assert kinds(res) == ["multi_disc"]
+    merge = res["issues"][0]
+    assert [b["id"] for b in merge["books"]] == [parts[1]["id"], parts[0]["id"], parts[2]["id"]]
+    assert merge["fix"]["type"] == "merge" and not merge["safe"] and merge["note"] is None
+
+
+def test_true_copies_found_and_best_kept():
+    a = item("A Dweller on Two Planets", ["F S Oliver"], "F/A Dweller (copy)", durs=(300.0, 250.0))
+    b = item("A Dweller on Two Planets", ["F S Oliver"], "F/A Dweller", durs=(300.4, 249.6), cover=True)
+    res = run([a, b])
+    assert kinds(res) == ["duplicate"]
+    fix = res["issues"][0]["fix"]
+    assert fix["keep"] == b["id"] and fix["remove"] == [a["id"]]
+
+
+def test_file_fixes_off_without_mounts():
+    res = run([item("The Broker", ["John Grisham"], f"G/The Broker Disc {n}", durs=(60.0 + n,)) for n in (1, 2)],
+              can_move=False)
+    assert res["issues"][0]["fix"] is None and "Mount" in res["issues"][0]["note"]
+
+
+def test_volume_set_becomes_series():
+    sub = "Learn to Speak and Understand Spanish with Pimsleur Language Programs"
+    vols = [item(f"Spanish Level 1 Lessons {r}: {sub}", ["Pimsleur"], f"P/{r}", subtitle=sub, series=[(sub, "")])
+            for r in ("6-10", "1-5", "11-15")]
+    res = run(vols)
+    vs = [i for i in res["issues"] if i["kind"] == "volume_set"][0]
+    assert vs["summary"].startswith("Pimsleur Spanish Level 1")
+    seqs = {op["item"]: op["set"]["series"] for op in vs["fix"]["ops"]}
+    assert seqs[vols[1]["id"]] == [["Pimsleur Spanish Level 1", "1"]]
+    assert seqs[vols[0]["id"]] == [["Pimsleur Spanish Level 1", "2"]]
+    # the bogus subtitle series is handled by the volume set, not reported twice
+    assert not [i for i in res["issues"] if i["kind"] == "series_is_subtitle"]
+
+
+# ---- covers
+
+class FakeABS:
+    def __init__(self, results):
+        self.results = results
+
+    def search_books(self, title, author="", provider=None):
+        return self.results
+
+
+def test_cover_exact_match_is_safe(tmp_path, monkeypatch):
+    monkeypatch.setattr("doctor.config.CONFIG_DIR", str(tmp_path))
+    fake = FakeABS([{"title": "Term Limits", "author": "Vince Flynn", "cover": "https://img/x.jpg"}])
+    res = checks.run([item("Term Limits", ["Vince Flynn"], "V/Term Limits")], fake, lookups=True)
+    cov = [i for i in res["issues"] if i["kind"] == "missing_cover"][0]
+    assert cov["safe"] and cov["fix"] == {"type": "cover", "item": cov["books"][0]["id"], "url": "https://img/x.jpg"}
+
+
+def test_cover_loose_match_waits_for_you(tmp_path, monkeypatch):
+    monkeypatch.setattr("doctor.config.CONFIG_DIR", str(tmp_path))
+    fake = FakeABS([{"title": "Term Limits: A Novel of Suspense?", "author": "Someone Else", "cover": "https://img/y.jpg"}])
+    res = checks.run([item("Term Limits", ["Vince Flynn"], "V/Term Limits")], fake, lookups=True)
+    cov = [i for i in res["issues"] if i["kind"] == "missing_cover"][0]
+    assert not cov["safe"] and cov["note"]
+
+
+def test_issue_ids_are_stable():
+    mk = lambda: [item("Kill Shot (Unabridged)", ["Vince Flynn"], "V/KS")]
+    a, b = run(mk()), run(mk())
+    assert a["issues"][0]["id"] != b["issues"][0]["id"]  # different items → different ids
+    x = mk()
+    assert run(x)["issues"][0]["id"] == run(x)["issues"][0]["id"]

@@ -1,0 +1,7 @@
+# Your own stack file with real paths stays local
+compose.yaml
+__pycache__/
+*.pyc
+.pytest_cache/
+config/
+trash/
