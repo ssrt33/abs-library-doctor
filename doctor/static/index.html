@@ -6,8 +6,9 @@
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#0f1115">
 <title>Library Doctor</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='4' width='24' height='24' rx='7' fill='%23e9a24a'/%3E%3Cpath d='M16 10v12M10 16h12' stroke='%230f1115' stroke-width='3.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23e9a24a'/%3E%3Cpath d='M10.5 16.5l3.6 3.6 7.4-7.6' fill='none' stroke='%230f1115' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <style>
+/* Same design system as audiobook-ripper, so the two apps look like a set. */
 :root{
   color-scheme:dark;
   --bg:#0f1115; --bg2:#14171d; --panel:#181b22; --panel2:#1d2129; --well:#11141a;
@@ -30,193 +31,234 @@ body{margin:0;min-height:100vh;color:var(--ink);font:15px/1.5 var(--sans);font-f
 button,input,select{font:inherit;color:inherit}
 a{color:var(--accent2);text-decoration:none}a:hover{text-decoration:underline}
 ::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--line2);border-radius:10px;border:2px solid var(--bg)}
+::-webkit-scrollbar-track{background:transparent}
 
+/* header */
 header{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;
   padding:12px 24px;border-bottom:1px solid var(--line);background:rgba(15,17,21,.78);backdrop-filter:blur(14px) saturate(1.3)}
 .brand{display:flex;align-items:center;gap:12px;font-weight:700;letter-spacing:-.015em;font-size:17px}
 .brand small{display:block;font-weight:500;font-size:12px;color:var(--muted);letter-spacing:0}
 .brand svg{flex:none;filter:drop-shadow(0 0 10px var(--accent-glow))}
-.hdr-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.pill{display:flex;align-items:center;gap:9px;padding:6px 12px;border:1px solid var(--line2);border-radius:999px;font-size:13px;background:var(--panel)}
-.pill .dot{width:8px;height:8px;border-radius:50%;background:var(--faint)}
-.pill[data-s=ok] .dot{background:var(--ok);box-shadow:0 0 0 4px var(--ok-soft)}
-.pill[data-s=busy] .dot{background:var(--busy);box-shadow:0 0 0 4px var(--busy-soft);animation:pulse 1.2s infinite}
-.pill[data-s=bad] .dot{background:var(--bad);box-shadow:0 0 0 4px var(--bad-soft)}
-.pill code{font-family:var(--mono);color:var(--muted);font-size:11.5px}
+.drives{display:flex;gap:8px;flex-wrap:wrap}
+.drive{display:flex;align-items:center;gap:9px;padding:5px 6px 5px 12px;border:1px solid var(--line2);border-radius:999px;font-size:13px;background:var(--panel)}
+.drive>span:not(.dot){color:var(--ink)}
+.drive .dot{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none}
+.drive[data-s=ok] .dot{background:var(--ok);box-shadow:0 0 0 4px var(--ok-soft)}
+.drive[data-s=busy] .dot{background:var(--busy);box-shadow:0 0 0 4px var(--busy-soft);animation:pulse 1.2s infinite}
+.drive[data-s=bad] .dot{background:var(--bad);box-shadow:0 0 0 4px var(--bad-soft)}
+.drive code{font-family:var(--mono);color:var(--muted);font-size:11.5px;background:var(--well);padding:1px 6px;border-radius:6px}
 @keyframes pulse{50%{opacity:.35}}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* layout */
 main{max-width:1240px;margin:0 auto;padding:28px 24px 48px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:24px;align-items:start}
 @media (max-width:960px){main{grid-template-columns:1fr;padding:16px}header{padding:12px 16px}}
-.col{display:grid;gap:24px;min-width:0}
+.col,aside{display:grid;gap:24px;min-width:0}
 .panel{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
 .panel>h2{margin:0;padding:14px 18px;font-size:12px;font-weight:650;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);
   border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}
 .panel>h2 .count{font-family:var(--mono);letter-spacing:0;color:var(--faint);font-weight:500}
-.pad{padding:16px 18px}
 
-/* summary tiles */
-.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line)}
-.tile{background:var(--panel);padding:18px 20px}
-.tile .n{font-size:30px;font-weight:750;letter-spacing:-.03em;line-height:1}
-.tile .l{color:var(--muted);font-size:13px;margin-top:6px}
-.tile.accent .n{color:var(--accent2)} .tile.ok .n{color:var(--ok)}
-@media (max-width:600px){.tile{padding:14px}.tile .n{font-size:24px}}
+/* hero cue */
+.cue{position:relative;display:flex;align-items:center;gap:20px;padding:24px;border-bottom:1px solid var(--line);
+  background:radial-gradient(600px 180px at 0 0,rgba(233,162,74,.22),transparent 70%),linear-gradient(180deg,rgba(233,162,74,.08),transparent)}
+.cue.busy{background:radial-gradient(600px 180px at 0 0,rgba(124,180,240,.2),transparent 70%),linear-gradient(180deg,rgba(124,180,240,.07),transparent)}
+.cue.ok{background:radial-gradient(600px 180px at 0 0,rgba(95,207,147,.16),transparent 70%),linear-gradient(180deg,rgba(95,207,147,.06),transparent)}
+.cue.bad{background:radial-gradient(600px 180px at 0 0,rgba(240,122,107,.2),transparent 70%),linear-gradient(180deg,rgba(240,122,107,.07),transparent)}
+.cue .big{font-size:30px;font-weight:750;letter-spacing:-.025em;line-height:1.1}
+.cue .sub{color:var(--muted);font-size:14px;margin-top:4px;overflow-wrap:anywhere}
+.cue .disc-ico{flex:none;filter:drop-shadow(0 6px 18px rgba(0,0,0,.5))}
+.cue .bar{height:7px;margin-top:12px}
+@media (max-width:600px){.cue{padding:18px;gap:14px}.cue .big{font-size:24px}.cue .disc-ico{width:48px;height:48px}}
+.bar{height:5px;border-radius:5px;background:rgba(255,255,255,.06);overflow:hidden;margin-top:7px}
+.bar i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .4s}
+.cue.busy .bar i{background-image:linear-gradient(45deg,rgba(255,255,255,.18) 25%,transparent 25% 50%,rgba(255,255,255,.18) 50% 75%,transparent 75%),linear-gradient(90deg,#5d9be0,var(--busy));
+  background-size:16px 16px,100% 100%;animation:stripes .8s linear infinite}
+@keyframes stripes{to{background-position:16px 0,0 0}}
 
-.banner{display:flex;gap:12px;align-items:flex-start;padding:14px 18px;border-radius:12px;font-size:14px;border:1px solid}
+/* sections inside the main panel (like the ripper's disc list) */
+.block{padding:18px 24px 24px}
+.block+.block{border-top:1px solid var(--line)}
+.block h3{font-size:12px;margin:0 0 12px;color:var(--muted);font-weight:650;text-transform:uppercase;letter-spacing:.09em;display:flex;justify-content:space-between}
+.block h3 span:last-child{font-family:var(--mono);text-transform:none;letter-spacing:0;font-weight:500;color:var(--faint)}
+@media (max-width:600px){.block{padding:16px 18px 18px}}
+
+.banners{display:grid;gap:10px;padding:18px 24px 0}
+.banners:empty{display:none}
+.banner{padding:12px 14px;border-radius:12px;font-size:13.5px;border:1px solid;color:var(--ink)}
 .banner.warn{background:var(--accent-soft);border-color:rgba(233,162,74,.35)}
-.banner.bad{background:var(--bad-soft);border-color:rgba(240,122,107,.35)}
-.banner b{display:block;margin-bottom:2px}
-.banner code{font-family:var(--mono);font-size:12.5px;background:var(--well);padding:1px 6px;border-radius:6px}
+.banner.bad{background:var(--bad-soft);border-color:rgba(240,122,107,.45)}
+.banner b{display:block;margin-bottom:2px;font-weight:650}
+.banner code{font-family:var(--mono);font-size:12px;background:var(--well);padding:1px 6px;border-radius:6px}
 
 /* issue groups */
-.group{border-top:1px solid var(--line)}
-.group:first-child{border-top:0}
-.group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;cursor:pointer;user-select:none}
-.group-head:hover{background:rgba(255,255,255,.015)}
-.group-head .t{font-weight:650;display:flex;align-items:center;gap:10px}
-.group-head .about{color:var(--muted);font-size:13px;margin-top:2px;font-weight:400}
+.group{border:1px solid var(--line);border-radius:12px;background:var(--well);margin-bottom:10px;transition:border-color .15s}
+.group:hover{border-color:var(--line2)}
+.group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;cursor:pointer;user-select:none}
+.group-head .t{font-weight:600;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.group-head .about{color:var(--muted);font-size:12.5px;margin-top:2px;font-weight:400}
 .group-head .caret{transition:transform .15s;color:var(--faint);flex:none}
 .group.open .caret{transform:rotate(90deg)}
-.group-body{display:none;padding:0 18px 16px;gap:10px}
+.group-body{display:none;padding:0 14px 14px;gap:8px}
 .group.open .group-body{display:grid}
-.badge{font-size:11px;font-weight:650;padding:2px 8px;border-radius:999px;background:var(--well);color:var(--muted);border:1px solid var(--line2);letter-spacing:.02em}
-.badge.files{color:var(--busy);border-color:rgba(124,180,240,.3);background:var(--busy-soft)}
-.badge.auto{color:var(--ok);border-color:rgba(95,207,147,.3);background:var(--ok-soft)}
-.num{font-family:var(--mono);font-size:12px;color:var(--accent2);background:var(--accent-soft);padding:1px 8px;border-radius:999px}
+.n{min-width:26px;height:26px;padding:0 6px;border-radius:999px;display:inline-grid;place-items:center;font:700 12.5px var(--mono);color:var(--accent);
+  background:radial-gradient(circle,var(--well) 0 4px,var(--accent-soft) 5px)}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.06em}
+.tag::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.tag.done{background:var(--ok-soft);color:var(--ok)}
+.tag.failed{background:var(--bad-soft);color:var(--bad)}
+.tag.busy{background:var(--busy-soft);color:var(--busy)}
+.tag.you{background:var(--accent-soft);color:var(--accent)}
+.tag.off{background:rgba(255,255,255,.05);color:var(--faint)}
 
-.issue{border:1px solid var(--line);border-radius:12px;background:var(--well);padding:12px 14px;display:grid;gap:10px}
+.issue{border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.18);padding:12px;display:grid;gap:10px}
 .issue .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .issue .sum{font-weight:600;overflow-wrap:anywhere}
 .issue .acts{display:flex;gap:6px;flex:none}
-.note{font-size:13px;color:var(--accent2)}
+.note{font-size:12.5px;color:var(--accent2)}
 .changes{display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr);gap:4px 10px;font-size:13.5px;align-items:center}
-.changes .f{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.changes .f{font-size:11.5px;font-weight:600;color:var(--muted);letter-spacing:.02em}
 .changes .b{color:var(--faint);text-decoration:line-through;text-decoration-color:rgba(240,122,107,.5);overflow-wrap:anywhere}
 .changes .a{color:var(--ink);overflow-wrap:anywhere}
 .changes .arr{color:var(--faint)}
-.changes img{width:72px;height:72px;object-fit:cover;border-radius:8px;box-shadow:0 0 0 1px rgba(255,255,255,.08)}
+.changes img{width:72px;height:72px;object-fit:cover;border-radius:8px;box-shadow:0 8px 20px -8px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.06)}
 @media (max-width:600px){.changes{grid-template-columns:1fr}.changes .arr{display:none}.changes .f{margin-top:6px}}
-.plan{margin:0;padding:10px 12px;list-style:none;font-family:var(--mono);font-size:12px;color:var(--muted);background:rgba(0,0,0,.25);border-radius:8px;display:grid;gap:3px}
+.plan{margin:0;padding:10px 12px;list-style:none;font:11.5px/1.6 var(--mono);color:var(--faint);background:var(--well);border:1px solid var(--line);border-radius:8px;display:grid;gap:2px}
 .plan li{overflow-wrap:anywhere}
 .plan li:last-child{color:var(--ink)}
 .copies{display:grid;gap:6px}
 .copy{display:grid;grid-template-columns:auto 70px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border-radius:8px;
-  border:1px solid var(--line);background:rgba(0,0,0,.25);cursor:pointer;font-size:13px}
+  border:1px solid var(--line);background:var(--well);cursor:pointer;font-size:13px;transition:border-color .15s}
+.copy:hover{border-color:var(--line2)}
 .copy input{accent-color:var(--accent);margin:0}
-.copy .what{font-size:11.5px;font-weight:650;text-transform:uppercase;letter-spacing:.06em;color:var(--faint)}
+.copy .what{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--faint)}
 .copy.keep{border-color:rgba(233,162,74,.45);background:var(--accent-soft)}
-.copy.keep .what{color:var(--accent2)}
-.copy .rel{font-family:var(--mono);font-size:12px;overflow-wrap:anywhere}
+.copy.keep .what{color:var(--accent)}
+.copy .rel{font:12px var(--mono);overflow-wrap:anywhere}
 .copy .tags{display:flex;gap:4px}
+@media (max-width:600px){.copy{grid-template-columns:auto minmax(0,1fr)}.copy .what{display:none}.copy .tags{grid-column:2}}
+details.more summary{cursor:pointer;color:var(--muted);font-size:13px;list-style:none}
+details.more summary::-webkit-details-marker{display:none}
+details.more summary::before{content:"▸ ";color:var(--faint)}
+details.more[open] summary::before{content:"▾ "}
+details.more+details.more{margin-top:12px}
 .info{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0 6px 14px;border-top:1px dashed var(--line);font-size:13.5px}
-#infoList details+details{margin-top:12px}
-#infoList details[open] summary{margin-bottom:6px}
+details.more[open] summary{margin-bottom:6px}
 
 /* buttons */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;border:1px solid var(--line2);background:var(--panel2);
-  cursor:pointer;font-weight:550;font-size:13.5px;transition:background .12s,border-color .12s,transform .05s;white-space:nowrap}
+  cursor:pointer;font-weight:600;font-size:13.5px;white-space:nowrap;transition:border-color .15s,background .15s,transform .05s,filter .15s}
 .btn:hover{border-color:var(--faint);background:#232833}
 .btn:active{transform:translateY(1px)}
 .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .btn.primary{background:linear-gradient(180deg,var(--accent2),var(--accent));border-color:transparent;color:var(--accent-ink);
-  box-shadow:0 6px 18px -8px var(--accent-glow)}
+  box-shadow:0 6px 20px -6px var(--accent-glow),0 1px 0 rgba(255,255,255,.35) inset}
 .btn.primary:hover{filter:brightness(1.06)}
 .btn.small{padding:5px 10px;font-size:12.5px;border-radius:8px}
 .btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
 .btn.ghost:hover{background:var(--panel2);color:var(--ink)}
 .btn:disabled{opacity:.4;cursor:default;box-shadow:none;filter:none}
-.spin{width:14px;height:14px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:spin .7s linear infinite;display:inline-block}
+.spin{width:13px;height:13px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:spin .7s linear infinite;display:inline-block}
 
 /* series */
-.series{padding:14px 18px;border-top:1px solid var(--line);display:grid;gap:8px}
-.series:first-of-type{border-top:0}
+.series{padding:14px 18px;border-bottom:1px solid var(--line);display:grid;gap:8px;transition:background .15s}
+.series:hover{background:rgba(255,255,255,.02)}
+.series:last-child{border-bottom:0}
 .series .head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .series .name{font-weight:650}
-.series .frac{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
-.bar{height:6px;border-radius:99px;background:var(--well);overflow:hidden;box-shadow:inset 0 0 0 1px var(--line)}
-.bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:99px}
+.series .frac{font:12.5px var(--mono);color:var(--muted)}
 .seqs{display:flex;flex-wrap:wrap;gap:5px}
-.seq{font-family:var(--mono);font-size:11.5px;min-width:30px;text-align:center;padding:3px 6px;border-radius:6px;border:1px solid var(--line2);color:var(--faint)}
+.seq{font:11.5px var(--mono);min-width:30px;text-align:center;padding:3px 6px;border-radius:6px;border:1px solid var(--line2);color:var(--faint)}
 .seq.have{background:var(--ok-soft);border-color:rgba(95,207,147,.3);color:var(--ok)}
 .seq.miss{border-style:dashed}
-details.missing summary{cursor:pointer;color:var(--muted);font-size:13px;list-style:none}
-details.missing summary::-webkit-details-marker{display:none}
-details.missing summary::before{content:"▸ ";color:var(--faint)}
-details.missing[open] summary::before{content:"▾ "}
 .misslist{margin:6px 0 0;padding:0;list-style:none;display:grid;gap:4px;font-size:13.5px}
 .misslist li{display:flex;gap:10px;align-items:baseline}
-.misslist .s{font-family:var(--mono);font-size:12px;color:var(--faint);min-width:34px}
+.misslist .s{font:12px var(--mono);color:var(--faint);min-width:34px}
 .misslist .y{color:var(--faint);font-size:12px}
 
-/* history */
-.hist{display:grid}
-.h{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;padding:11px 18px;border-top:1px solid var(--line);font-size:13.5px}
-.h:first-child{border-top:0}
-.h .s{overflow-wrap:anywhere}
-.h .meta{grid-column:1;color:var(--faint);font-size:12px;display:flex;gap:8px;align-items:center}
-.h .act{grid-row:1/3;grid-column:2;align-self:center}
-.h.undone .s{color:var(--faint);text-decoration:line-through}
-.confirm{display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--accent2)}
+/* history (like the ripper's book list) */
+.lib-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:14px 18px;border-bottom:1px solid var(--line);align-items:start;transition:background .15s}
+.lib-item:hover{background:rgba(255,255,255,.02)}
+.lib-item:last-child{border-bottom:0}
+.lib-item .t{font-weight:600;line-height:1.3;font-size:14px;overflow-wrap:anywhere}
+.lib-item .a{font-size:12.5px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px}
+.lib-item .act{grid-row:1/3;grid-column:2;align-self:center}
+.lib-item.undone .t{color:var(--faint);text-decoration:line-through}
+.lib-item.more{display:block;padding:10px 12px}
+.confirm{display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--accent2);flex-wrap:wrap;justify-content:flex-end}
 
 /* settings */
-.set{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
-.set:first-child{border-top:0;padding-top:0}
-.set small{display:block;color:var(--muted);font-size:12.5px}
-.switch{position:relative;width:40px;height:23px;flex:none}
-.switch input{opacity:0;width:0;height:0;position:absolute}
-.switch span{position:absolute;inset:0;border-radius:99px;background:var(--line2);transition:.15s;cursor:pointer}
-.switch span::after{content:"";position:absolute;left:3px;top:3px;width:17px;height:17px;border-radius:50%;background:var(--ink);transition:.15s}
-.switch input:checked+span{background:var(--accent)}
-.switch input:checked+span::after{transform:translateX(17px);background:var(--accent-ink)}
-.switch input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
-.num-in{width:70px;padding:6px 8px;border-radius:8px;border:1px solid var(--line2);background:var(--well);text-align:right}
-.kinds{display:grid;gap:6px;margin-top:6px}
-.kinds label{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);cursor:pointer}
-.kinds input{accent-color:var(--accent)}
+.settings{padding:4px 18px 18px;font-size:13px;color:var(--muted);display:grid;gap:2px}
+.settings .lib{display:flex;flex-direction:column;gap:4px;padding:12px 14px;margin:12px 0 6px;border:1px solid var(--line);border-radius:10px;background:var(--well)}
+.settings .lib .path{color:var(--ink)}
+.path{font:11.5px var(--mono);color:var(--faint);word-break:break-all}
+.sw{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;cursor:pointer;border-bottom:1px solid var(--line)}
+.sw span{display:flex;flex-direction:column}
+.sw b{color:var(--ink);font-weight:600;font-size:14px}
+.sw small{font-size:12px;color:var(--muted)}
+.sw input{position:absolute;opacity:0;pointer-events:none}
+.sw i{flex:none;width:40px;height:23px;border-radius:999px;background:var(--line2);position:relative;transition:background .15s,box-shadow .15s}
+.sw i::after{content:"";position:absolute;top:3px;left:3px;width:17px;height:17px;border-radius:50%;background:#d9d4ca;box-shadow:0 1px 3px rgba(0,0,0,.4);transition:transform .18s cubic-bezier(.3,1.4,.6,1)}
+.sw input:checked+i{background:var(--accent);box-shadow:0 0 14px -2px var(--accent-glow)}
+.sw input:checked+i::after{transform:translateX(17px);background:#fff8ec}
+.sw input:focus-visible+i{outline:2px solid var(--accent);outline-offset:2px}
+.sw.small{padding:7px 0}
+.sw.small b{font-size:13px;font-weight:500}
+.sw.small i{width:34px;height:20px}
+.sw.small i::after{width:14px;height:14px}
+.sw.small input:checked+i::after{transform:translateX(14px)}
+.sw.dim{opacity:.45;cursor:default}
+.sub-h{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;margin:18px 0 8px;color:var(--faint)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.f{display:flex;flex-direction:column;gap:5px}
+.f label{font-size:11.5px;font-weight:600;color:var(--muted);letter-spacing:.02em}
+.f select{width:100%;padding:9px 12px;font-size:14px;border:1px solid var(--line);border-radius:10px;background:var(--well);outline:none;
+  appearance:none;-webkit-appearance:none;padding-right:32px;cursor:pointer;transition:border-color .15s,box-shadow .15s;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%239a968e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center}
+.f select:hover{border-color:var(--line2)}
+.f select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+select option{background:var(--panel)}
+.saved{margin-top:12px;font-size:12px;color:var(--faint)}
 
-.empty{padding:26px;text-align:center;color:var(--muted)}
-.empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
+.empty{padding:26px;text-align:center;color:var(--muted);border:1.5px dashed var(--line2);border-radius:12px;background:rgba(0,0,0,.12)}
+.pad{padding:18px}
 .muted{color:var(--muted)} .faint{color:var(--faint)}
 .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,8px);background:var(--panel2);color:var(--ink);border:1px solid var(--line2);
-  padding:10px 16px;border-radius:12px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.2s;z-index:20;max-width:min(92vw,560px);font-size:14px}
+  padding:11px 18px;border-radius:12px;font-size:14px;box-shadow:0 18px 40px -10px rgba(0,0,0,.7);opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;max-width:calc(100% - 32px);z-index:20}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .toast.bad{border-color:rgba(240,122,107,.5)}
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <header>
   <div class="brand">
-    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="3" y="3" width="28" height="28" rx="8" fill="#e9a24a"/><path d="M17 10.5v13M10.5 17h13" stroke="#0f1115" stroke-width="3.4" stroke-linecap="round"/></svg>
-    <div>Library Doctor<small id="libName">for Audiobookshelf</small></div>
+    <svg width="34" height="34" viewBox="0 0 32 32" aria-hidden="true">
+      <defs><linearGradient id="bg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6cf8e"/><stop offset="1" stop-color="#d8862f"/></linearGradient></defs>
+      <circle cx="16" cy="16" r="15" fill="url(#bg1)"/><circle cx="16" cy="16" r="10.5" fill="none" stroke="#1b1206" stroke-opacity=".18"/>
+      <path d="M10.6 16.4l3.5 3.5 7.3-7.5" fill="none" stroke="#0f1115" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div>Library Doctor<small>Tidies your Audiobookshelf library</small></div>
   </div>
-  <div class="hdr-right">
-    <div class="pill" id="statusPill" data-s=""><span class="dot"></span><span id="statusText">Loading…</span></div>
-    <button class="btn primary" id="scanBtn" type="button">Scan now</button>
-  </div>
+  <div class="drives"><div class="drive" id="statusPill" data-s="">
+    <span class="dot"></span><code id="statusCode">ABS</code><span id="statusText">Loading…</span>
+    <button class="btn small" id="scanBtn" type="button">Scan now</button>
+  </div></div>
 </header>
 
 <main>
   <div class="col">
-    <div id="banners" style="display:grid;gap:12px"></div>
-
     <section class="panel">
-      <div class="tiles">
-        <div class="tile accent"><div class="n" id="tNeed">–</div><div class="l">waiting for your OK</div></div>
-        <div class="tile ok"><div class="n" id="tAuto">–</div><div class="l">fixed on its own</div></div>
-        <div class="tile"><div class="n" id="tBooks">–</div><div class="l">books checked</div></div>
+      <div id="cue"></div>
+      <div class="banners" id="banners"></div>
+      <div class="block">
+        <h3><span>Needs your OK</span><span id="needCount"></span></h3>
+        <div id="groups"></div>
       </div>
-    </section>
-
-    <section class="panel">
-      <h2>Needs your OK <span class="count" id="needCount"></span></h2>
-      <div id="groups"></div>
-    </section>
-
-    <section class="panel" id="infoPanel" hidden>
-      <h2>For your attention <span class="count" id="infoCount"></span></h2>
-      <div class="pad" id="infoList"></div>
+      <div class="block" id="infoBlock" hidden>
+        <h3><span>For your attention</span><span id="infoCount"></span></h3>
+        <div id="infoList"></div>
+      </div>
     </section>
 
     <section class="panel">
@@ -225,30 +267,20 @@ details.missing[open] summary::before{content:"▾ "}
     </section>
   </div>
 
-  <aside class="col">
+  <aside>
     <section class="panel">
       <h2>History <span class="count" id="histCount"></span></h2>
-      <div class="hist" id="history"></div>
+      <div id="history"></div>
     </section>
 
     <section class="panel">
       <h2>Settings</h2>
-      <div class="pad">
-        <div class="set">
-          <div>Fix safe things on its own<small>Only the checks ticked below. Anything that moves files always asks.</small></div>
-          <label class="switch"><input type="checkbox" id="autoFix"><span></span><b class="sr">Auto-fix</b></label>
-        </div>
-        <div class="kinds" id="kinds"></div>
-        <div class="set">
-          <div>Scan every<small>Hours between automatic scans</small></div>
-          <div><input class="num-in" id="every" type="number" min="0.25" max="168" step="0.25"> <span class="muted">h</span></div>
-        </div>
-      </div>
+      <div class="settings" id="settings"></div>
     </section>
 
     <section class="panel" id="ignoredPanel" hidden>
       <h2>Ignored <span class="count" id="ignCount"></span></h2>
-      <div class="hist" id="ignored"></div>
+      <div id="ignored"></div>
     </section>
   </aside>
 </main>
@@ -257,10 +289,10 @@ details.missing[open] summary::before{content:"▾ "}
 <script>
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let S = null, openGroups = new Set(JSON.parse(localStorageGet("openGroups") || "[]")), pending = new Set(), confirming = null, showAllHist = false, keepChoice = {};
-
 function localStorageGet(k){ try { return localStorage.getItem(k); } catch { return null; } }
 function localStorageSet(k, v){ try { localStorage.setItem(k, v); } catch {} }
+let S = null, openGroups = new Set(JSON.parse(localStorageGet("openGroups") || "[]")), pending = new Set(),
+    confirming = null, showAllHist = false, keepChoice = {};
 
 async function api(method, path, body){
   const r = await fetch(path, {method, headers: body ? {"Content-Type": "application/json"} : {}, body: body ? JSON.stringify(body) : undefined});
@@ -283,8 +315,36 @@ function ago(ts){
   if (s < 86400) return Math.floor(s / 3600) + " h ago";
   return Math.floor(s / 86400) + " d ago";
 }
-
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 const caret = '<svg class="caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>';
+
+// The ripper's disc, with a check mark when all is well. Spins while scanning.
+function discIcon(cls){
+  const glint = {busy: "#7cb4f0", ok: "#5fcf93", bad: "#f07a6b"}[cls] || "#f2c27a";
+  return `<svg class="disc-ico" width="64" height="64" viewBox="0 0 32 32" aria-hidden="true" ${cls === "busy" ? 'style="animation:spin 1.6s linear infinite"' : ""}>
+    <defs><radialGradient id="cdg" cx="50%" cy="50%" r="50%"><stop offset=".25" stop-color="#2a2f3a"/><stop offset="1" stop-color="#3b4150"/></radialGradient>
+    <linearGradient id="cds" x1="0" y1="0" x2="1" y2="1"><stop offset=".3" stop-color="${glint}" stop-opacity="0"/><stop offset=".5" stop-color="${glint}" stop-opacity=".55"/><stop offset=".7" stop-color="${glint}" stop-opacity="0"/></linearGradient></defs>
+    <circle cx="16" cy="16" r="15.5" fill="url(#cdg)"/><circle cx="16" cy="16" r="15.5" fill="url(#cds)"/>
+    <circle cx="16" cy="16" r="11" fill="none" stroke="#fff" stroke-opacity=".05"/><circle cx="16" cy="16" r="5.5" fill="#1d2129" stroke="#fff" stroke-opacity=".1"/>
+    ${cls === "ok" ? `<path d="M13.4 16.2l1.8 1.8 3.6-3.7" fill="none" stroke="${glint}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`
+                   : `<circle cx="16" cy="16" r="2.2" fill="var(--bg)"/>`}</svg>`;
+}
+
+function renderCue(fixable, autoCount){
+  let c;
+  const stats = [S.books ? plural(S.books, "book") + " checked" : "", autoCount ? `${autoCount} fixed on ${autoCount === 1 ? "its" : "their"} own` : "",
+                 S.last_scan ? `last check ${ago(S.last_scan)}` : ""].filter(Boolean).join(" · ");
+  if (!S.configured) c = {cls: "", big: "Connect to Audiobookshelf", sub: "Set ABS_URL and ABS_TOKEN on this container, then restart it."};
+  else if (S.scan.running) c = {cls: "busy", big: "Checking your library", sub: S.scan.step || "Working…", bar: true};
+  else if (S.scan.error) c = {cls: "bad", big: "The last check didn't finish", sub: S.scan.error};
+  else if (!S.last_scan) c = {cls: "", big: "Ready for a first check", sub: "Press Scan now, or wait a moment – it starts on its own."};
+  else if (fixable) c = {cls: "", big: `${plural(fixable, "thing")} need${fixable === 1 ? "s" : ""} your OK`, sub: stats};
+  else c = {cls: "ok", big: "All tidy", sub: stats || "Nothing needs you right now."};
+  document.title = S.configured && !S.scan.running && fixable ? `${fixable} waiting · Library Doctor` : "Library Doctor";
+  $("#cue").innerHTML = `<div class="cue ${c.cls}">${discIcon(c.cls)}
+    <div style="flex:1;min-width:0"><div class="big">${esc(c.big)}</div><div class="sub">${esc(c.sub)}</div>
+    ${c.bar ? `<div class="bar"><i style="width:100%"></i></div>` : ""}</div></div>`;
+}
 
 function renderChanges(ch){
   if (!ch.length) return "";
@@ -300,7 +360,7 @@ function renderCopies(i){
       <input type="radio" name="keep-${i.id}" value="${c.id}" data-keep="${i.id}" ${c.id === pick ? "checked" : ""}>
       <span class="what">${c.id === pick ? "Keep" : "To trash"}</span>
       <span class="rel">${esc(c.rel)}</span>
-      <span class="tags">${c.cover ? '<span class="badge">cover</span>' : ""}${c.progress ? '<span class="badge auto">in progress</span>' : ""}</span>
+      <span class="tags">${c.cover ? '<span class="tag off">cover</span>' : ""}${c.progress ? '<span class="tag done">in progress</span>' : ""}</span>
     </label>`).join("")}</div>`;
 }
 
@@ -318,78 +378,63 @@ function renderIssue(i){
   </div>`;
 }
 
-function render(){
-  if (!S) return;
-  const scanning = S.scan.running;
-  // header
-  const pill = $("#statusPill"), st = $("#statusText");
+function renderHeader(){
+  const pill = $("#statusPill"), st = $("#statusText"), code = $("#statusCode");
+  code.textContent = S.server?.version ? `ABS ${S.server.version}` : "ABS";
   if (!S.configured) { pill.dataset.s = "bad"; st.textContent = "Not connected"; }
-  else if (scanning) { pill.dataset.s = "busy"; st.textContent = S.scan.step || "Working…"; }
-  else if (S.scan.error) { pill.dataset.s = "bad"; st.textContent = "Last scan failed"; }
-  else { pill.dataset.s = "ok"; st.innerHTML = `Checked ${esc(ago(S.last_scan))}${S.server ? ` · <code>ABS ${esc(S.server.version)}</code>` : ""}`; }
-  const btn = $("#scanBtn"); btn.disabled = scanning || !S.configured;
-  btn.innerHTML = scanning ? '<span class="spin"></span> Scanning' : "Scan now";
-  $("#libName").textContent = S.libraries && S.libraries.length ? S.libraries.map(l => l.name).join(", ") : "for Audiobookshelf";
+  else if (S.scan.running) { pill.dataset.s = "busy"; st.textContent = "Checking…"; }
+  else if (S.scan.error) { pill.dataset.s = "bad"; st.textContent = "Last check failed"; }
+  else { pill.dataset.s = "ok"; st.textContent = `Checked ${ago(S.last_scan)}`; }
+  const btn = $("#scanBtn"); btn.disabled = S.scan.running || !S.configured;
+  btn.innerHTML = S.scan.running ? '<span class="spin"></span> Checking' : "Scan now";
+}
 
-  // banners
-  const b = [];
-  if (!S.configured) b.push(`<div class="banner bad"><div><b>Not connected to Audiobookshelf yet</b>Create an API key in Audiobookshelf under <code>Settings → API Keys</code>, then set <code>ABS_TOKEN</code> (and <code>ABS_URL</code>) on this container and restart it.</div></div>`);
-  if (S.scan.error) b.push(`<div class="banner bad"><div><b>The last scan didn't finish</b>${esc(S.scan.error)}</div></div>`);
-  if (S.overlaps && S.overlaps.length) {
-    const o = S.overlaps[0];
-    const two = o.outer_lib !== o.inner_lib || (S.libraries || []).length > 1;
+function renderBanners(){
+  const b = [], ov = S.overlaps || [];
+  if (ov.length) {
+    const o = ov[0], two = o.outer_lib !== o.inner_lib || (S.libraries || []).length > 1;
     b.push(two
-      ? `<div class="banner bad"><div><b>Two libraries show the same books</b>One library uses <code>${esc(o.outer)}</code> and another uses <code>${esc(o.inner)}</code>, which is inside it, so every book there is listed in both. Pick one: either set <code>LIBRARIES</code> on this container to that library's id (from its address in Audiobookshelf, <code>…/library/&lt;id&gt;</code>), or remove the extra library in Audiobookshelf. Until then, merging and removing copies stay off so nothing real gets moved.</div></div>`
-      : `<div class="banner bad"><div><b>Your library scans the same books twice</b>The library folder <code>${esc(o.inner)}</code> is inside <code>${esc(o.outer)}</code>, which is also one of its folders, so every book under it shows up twice. In Audiobookshelf go to <code>Settings → Libraries</code>, edit <b>${esc(o.outer_lib)}</b>, and keep only the folder that holds your audiobooks. Until then, merging and removing copies stay off so nothing real gets moved.</div></div>`);
+      ? `<div class="banner bad"><b>Two libraries show the same books</b>One library uses <code>${esc(o.outer)}</code> and another uses <code>${esc(o.inner)}</code>, which is inside it, so every book there is listed in both. Either set <code>LIBRARIES</code> on this container to one library's id (from its address in Audiobookshelf, <code>…/library/&lt;id&gt;</code>), or remove the extra library in Audiobookshelf. Until then, merging and removing copies stay off so nothing real gets moved.</div>`
+      : `<div class="banner bad"><b>Your library scans the same books twice</b>The folder <code>${esc(o.inner)}</code> is inside <code>${esc(o.outer)}</code>, which is also one of the library's folders. In Audiobookshelf go to <code>Settings → Libraries</code>, edit <b>${esc(o.outer_lib)}</b>, and keep only the folder that holds your audiobooks. Until then, merging and removing copies stay off.</div>`);
   }
-  if (S.configured && !S.can_move && !(S.overlaps && S.overlaps.length)) b.push(`<div class="banner warn"><div><b>Merging discs and removing copies are off</b>${esc(S.can_move_reason)} Everything else still works.</div></div>`);
-  else if (S.configured && !S.trash_mounted) b.push(`<div class="banner warn"><div><b>The trash folder isn't a mounted volume</b>Copies moved there would vanish when the container is rebuilt. Mount a folder at <code>/trash</code>.</div></div>`);
-  if (S.errors && S.errors.length) b.push(`<div class="banner warn"><div><b>Some series lookups failed</b>${S.errors.slice(0, 3).map(esc).join("<br>")}</div></div>`);
+  if (S.configured && !S.can_move && !ov.length) b.push(`<div class="banner warn"><b>Merging discs and removing copies are off</b>${esc(S.can_move_reason)} Everything else still works.</div>`);
+  else if (S.configured && S.can_move && !S.trash_mounted) b.push(`<div class="banner warn"><b>The trash folder isn't a mounted volume</b>Copies moved there would vanish when the container is rebuilt. Mount a folder at <code>/trash</code>.</div>`);
+  if (S.errors && S.errors.length) b.push(`<div class="banner warn"><b>Some series lookups failed</b>${S.errors.slice(0, 3).map(esc).join("<br>")}</div>`);
   $("#banners").innerHTML = b.join("");
+}
 
-  // issues
-  const open = S.issues.filter(i => !i.ignored);
-  const fixable = open.filter(i => i.fix);
-  const info = open.filter(i => !i.fix);
-  const autoCount = S.history.filter(h => h.auto && !h.undone).length;
-  $("#tNeed").textContent = fixable.length;
-  $("#tAuto").textContent = autoCount;
-  $("#tBooks").textContent = S.books || 0;
+function renderIssues(fixable, info, autoCount){
   $("#needCount").textContent = fixable.length || "";
-
   const byKind = {};
   fixable.forEach(i => (byKind[i.kind] ||= []).push(i));
   const order = Object.keys(S.kinds);
   const kinds = Object.keys(byKind).sort((a, b) => order.indexOf(a) - order.indexOf(b));
-  if (!kinds.length) {
-    $("#groups").innerHTML = S.last_scan
-      ? `<div class="empty"><b>Nothing waiting</b>${autoCount ? "Safe fixes were applied on their own; see History." : "Your library looks tidy."}</div>`
-      : `<div class="empty"><b>No scan yet</b>${S.configured ? "Press Scan now to check your library." : "Connect to Audiobookshelf first."}</div>`;
-  } else {
-    $("#groups").innerHTML = kinds.map(k => {
-      const K = S.kinds[k], list = byKind[k], isOpen = openGroups.has(k);
-      const canBulk = !K.moves_files && list.length > 1;
-      return `<div class="group${isOpen ? " open" : ""}" data-kind="${k}">
-        <div class="group-head" data-toggle="${k}" role="button" tabindex="0" aria-expanded="${isOpen}">
-          <div><div class="t">${caret}${esc(K.label)} <span class="num">${list.length}</span>${K.moves_files ? '<span class="badge files">moves files</span>' : ""}</div>
-          <div class="about">${esc(K.about)}</div></div>
-          ${canBulk ? `<button class="btn small" data-fixkind="${k}" ${scanning ? "disabled" : ""}>Fix all ${list.length}</button>` : ""}
-        </div>
-        <div class="group-body">${list.map(renderIssue).join("")}</div>
-      </div>`;
-    }).join("");
-  }
+  $("#groups").innerHTML = !kinds.length
+    ? `<div class="empty">${S.last_scan ? (autoCount ? "Nothing waiting. Safe fixes were applied on their own – see History." : "Nothing waiting. Your library looks tidy.")
+                                       : S.configured ? "Nothing yet – press <b>Scan now</b> to check your library." : "Connect to Audiobookshelf first."}</div>`
+    : kinds.map(k => {
+        const K = S.kinds[k], list = byKind[k], isOpen = openGroups.has(k), canBulk = !K.moves_files && list.length > 1;
+        return `<div class="group${isOpen ? " open" : ""}" data-kind="${k}">
+          <div class="group-head" data-toggle="${k}" role="button" tabindex="0" aria-expanded="${isOpen}">
+            <div><div class="t">${caret}${esc(K.label)} <span class="n">${list.length}</span>${K.moves_files ? '<span class="tag busy">moves files</span>' : ""}</div>
+            <div class="about">${esc(K.about)}</div></div>
+            ${canBulk ? `<button class="btn small" data-fixkind="${k}" ${S.scan.running ? "disabled" : ""}>Fix all ${list.length}</button>` : ""}
+          </div>
+          <div class="group-body">${list.map(renderIssue).join("")}</div>
+        </div>`;
+      }).join("");
 
-  $("#infoPanel").hidden = !info.length;
+  $("#infoBlock").hidden = !info.length;
   $("#infoCount").textContent = info.length || "";
   const infoBy = {};
   info.forEach(i => (infoBy[i.kind] ||= []).push(i));
-  $("#infoList").innerHTML = Object.entries(infoBy).map(([k, list]) => `<details class="missing"${openGroups.has("info:" + k) ? " open" : ""} data-info="${k}">
-    <summary>${esc(S.kinds[k]?.label || k)} – ${list.length} book${list.length === 1 ? "" : "s"}<br><span class="faint">${esc(list[0].note || "")}</span></summary>
+  $("#infoList").innerHTML = Object.entries(infoBy).map(([k, list]) => `<details class="more"${openGroups.has("info:" + k) ? " open" : ""} data-info="${k}">
+    <summary>${esc(S.kinds[k]?.label || k)} – ${plural(list.length, "book")}<br><span class="faint">${esc(list[0].note || "")}</span></summary>
     ${list.map(i => `<div class="info"><span>${esc(i.summary)}</span><button class="btn small ghost" data-ignore="${i.id}">Dismiss</button></div>`).join("")}
   </details>`).join("");
+}
 
-  // series
+function renderSeries(){
   const ser = (S.series || []).slice().sort((a, b) => (b.missing.length - a.missing.length) || a.name.localeCompare(b.name));
   $("#seriesCount").textContent = ser.length || "";
   $("#series").innerHTML = ser.length ? ser.map(s => {
@@ -404,37 +449,75 @@ function render(){
         <span class="frac">${have} of ${s.total}</span></div>
       <div class="bar"><i style="width:${Math.round(100 * have / total)}%"></i></div>
       <div class="seqs">${allSeq.map(q => `<span class="seq ${missingSeq.has(q) ? "miss" : "have"}" title="${missingSeq.has(q) ? "Missing" : "You have this"}">${esc(q)}</span>`).join("")}</div>
-      ${s.missing.length ? `<details class="missing"><summary>${s.missing.length} to find next</summary><ul class="misslist">${s.missing.map(m =>
+      ${s.missing.length ? `<details class="more"><summary>${s.missing.length} to find next</summary><ul class="misslist">${s.missing.map(m =>
         `<li><span class="s">#${esc(m.sequence)}</span><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.title || m.asin)}</a> <span class="y">${esc(m.year || "")}</span></li>`).join("")}</ul></details>`
         : `<div class="muted" style="font-size:13px">Complete – you have every book.</div>`}
     </div>`;
-  }).join("") : `<div class="empty">${S.last_scan ? "No series in your library yet." : "Series show up after the first scan."}</div>`;
+  }).join("") : `<div class="pad"><div class="empty">${S.last_scan ? "No series in your library yet." : "Series show up after the first check."}</div></div>`;
+}
 
-  // history
+function renderHistory(){
   $("#histCount").textContent = S.history.length || "";
-  const histShown = showAllHist ? S.history.slice(0, 200) : S.history.slice(0, 12);
-  $("#history").innerHTML = S.history.length ? histShown.map(h => `<div class="h${h.undone ? " undone" : ""}">
-      <div class="s">${esc(h.summary)}</div>
-      <div class="act">${h.undone ? '<span class="faint" style="font-size:12px">Undone</span>'
+  const shown = showAllHist ? S.history.slice(0, 200) : S.history.slice(0, 12);
+  $("#history").innerHTML = S.history.length ? shown.map(h => `<div class="lib-item${h.undone ? " undone" : ""}">
+      <div class="t">${esc(h.summary)}</div>
+      <div class="act">${h.undone ? ""
         : confirming === h.id ? `<span class="confirm">Overwrite your edit? <button class="btn small" data-force="${h.id}">Yes</button><button class="btn small ghost" data-cancel>No</button></span>`
-        : `<button class="btn small ghost" data-undo="${h.id}" ${scanning ? "disabled" : ""}>Undo</button>`}</div>
-      <div class="meta">${h.auto ? '<span class="badge auto">auto</span>' : '<span class="badge">you</span>'}${esc(S.kinds[h.kind]?.label || h.kind)} · ${esc(ago(h.at))}</div>
-    </div>`).join("") + (S.history.length > 12 ? `<div class="h"><button class="btn small ghost" data-morehist>${showAllHist ? "Show fewer" : `Show all ${S.history.length}`}</button></div>` : "")
-    : `<div class="empty">Fixes show up here, each with an Undo.</div>`;
+        : `<button class="btn small ghost" data-undo="${h.id}" ${S.scan.running ? "disabled" : ""}>Undo</button>`}</div>
+      <div class="a">${h.undone ? '<span class="tag off">undone</span>' : h.auto ? '<span class="tag done">auto</span>' : '<span class="tag you">you</span>'}
+        <span>${esc(S.kinds[h.kind]?.label || h.kind)} · ${esc(ago(h.at))}</span></div>
+    </div>`).join("") + (S.history.length > 12 ? `<div class="lib-item more"><button class="btn small ghost" data-morehist>${showAllHist ? "Show fewer" : `Show all ${S.history.length}`}</button></div>` : "")
+    : `<div class="pad"><div class="empty">Fixes show up here, each with an Undo.</div></div>`;
 
-  // ignored
   const ign = Object.entries(S.ignored || {});
   $("#ignoredPanel").hidden = !ign.length;
   $("#ignCount").textContent = ign.length || "";
-  $("#ignored").innerHTML = ign.map(([id, v]) => `<div class="h"><div class="s">${esc(v.summary)}</div>
+  $("#ignored").innerHTML = ign.map(([id, v]) => `<div class="lib-item"><div class="t">${esc(v.summary)}</div>
     <div class="act"><button class="btn small ghost" data-unignore="${id}">Restore</button></div>
-    <div class="meta">${esc(v.reason || "Ignored")} · ${esc(ago(v.at))}</div></div>`).join("");
+    <div class="a"><span>${esc(v.reason || "Ignored")} · ${esc(ago(v.at))}</span></div></div>`).join("");
+}
 
-  // settings (don't clobber while editing)
-  if (document.activeElement?.id !== "every") $("#every").value = S.settings.scan_every_hours;
-  $("#autoFix").checked = S.settings.auto_fix;
-  $("#kinds").innerHTML = Object.entries(S.kinds).filter(([, K]) => !K.moves_files).map(([k, K]) =>
-    `<label><input type="checkbox" data-kind-auto="${k}" ${S.settings.auto_kinds.includes(k) ? "checked" : ""} ${S.settings.auto_fix ? "" : "disabled"}> ${esc(K.label)}</label>`).join("");
+const EVERY = [[1, "Every hour"], [3, "Every 3 hours"], [6, "Every 6 hours"], [12, "Every 12 hours"], [24, "Once a day"], [168, "Once a week"]];
+function renderSettings(){
+  const s = S.settings, el = $("#settings");
+  const autoKinds = Object.entries(S.kinds).filter(([, K]) => !K.moves_files && K.group !== "Library setup");
+  const sig = autoKinds.map(([k]) => k).join(",");
+  if (el.dataset.built !== sig) {
+    el.dataset.built = sig;
+    el.innerHTML = `
+      <div class="lib">Audiobookshelf <span class="path" id="absUrl"></span><span class="path" id="absLibs"></span></div>
+      <label class="sw"><span><b>Fix safe things on their own</b><small>Only the checks below. Anything that moves files always asks.</small></span>
+        <input type="checkbox" id="autoFix"><i></i></label>
+      <div class="sub-h">Done on their own</div>
+      ${autoKinds.map(([k, K]) => `<label class="sw small" data-kind-row="${k}"><span><b>${esc(K.label)}</b></span>
+        <input type="checkbox" data-kind-auto="${k}"><i></i></label>`).join("")}
+      <div class="sub-h">Schedule</div>
+      <div class="grid2"><div class="f"><label for="every">Check the library</label><select id="every"></select></div></div>
+      <div class="saved">Changes save automatically.</div>`;
+  }
+  $("#absUrl").textContent = S.abs_url || "";
+  $("#absLibs").textContent = (S.libraries || []).length ? "Library: " + S.libraries.map(l => l.name).join(", ") : "";
+  $("#autoFix").checked = !!s.auto_fix;
+  el.querySelectorAll("[data-kind-auto]").forEach(inp => {
+    inp.checked = s.auto_kinds.includes(inp.dataset.kindAuto);
+    inp.disabled = !s.auto_fix;
+    inp.closest(".sw").classList.toggle("dim", !s.auto_fix);
+  });
+  const sel = $("#every");
+  if (document.activeElement !== sel) {
+    const cur = Number(s.scan_every_hours);
+    const opts = EVERY.some(([v]) => v === cur) ? EVERY : [...EVERY, [cur, `Every ${cur} hours`]].sort((a, b) => a[0] - b[0]);
+    sel.innerHTML = opts.map(([v, t]) => `<option value="${v}"${v === cur ? " selected" : ""}>${t}</option>`).join("");
+  }
+}
+
+function render(){
+  if (!S) return;
+  const open = S.issues.filter(i => !i.ignored);
+  const fixable = open.filter(i => i.fix), info = open.filter(i => !i.fix);
+  const autoCount = S.history.filter(h => h.auto && !h.undone).length;
+  renderHeader(); renderCue(fixable.length, autoCount); renderBanners();
+  renderIssues(fixable, info, autoCount); renderSeries(); renderHistory(); renderSettings();
 }
 
 let pollT;
@@ -454,7 +537,7 @@ document.addEventListener("click", async e => {
       openGroups.has(d.toggle) ? openGroups.delete(d.toggle) : openGroups.add(d.toggle);
       localStorageSet("openGroups", JSON.stringify([...openGroups])); render();
     } else if (t.id === "scanBtn") {
-      await api("POST", "/api/scan"); toast("Scanning your library…"); setTimeout(refresh, 400);
+      await api("POST", "/api/scan"); toast("Checking your library…"); setTimeout(refresh, 400);
     } else if (d.fix) {
       pending.add(d.fix); render();
       try { await api("POST", `/api/issues/${d.fix}/fix`, keepChoice[d.fix] ? {keep: keepChoice[d.fix]} : {}); delete keepChoice[d.fix]; toast("Fixed."); }
@@ -463,12 +546,12 @@ document.addEventListener("click", async e => {
     } else if (d.fixkind) {
       t.disabled = true; t.innerHTML = '<span class="spin"></span> Fixing';
       const r = await api("POST", `/api/issues/fix-kind/${d.fixkind}`);
-      toast(r.failed.length ? `Fixed ${r.fixed}; ${r.failed.length} skipped (changed since the scan).` : `Fixed ${r.fixed}.`, r.failed.length > 0);
+      toast(r.failed.length ? `Fixed ${r.fixed}; ${r.failed.length} skipped (changed since the check).` : `Fixed ${r.fixed}.`, r.failed.length > 0);
       refresh();
     } else if (d.ignore) {
       await api("POST", `/api/issues/${d.ignore}/ignore`, {on: true}); refresh();
     } else if (d.unignore) {
-      await api("POST", `/api/issues/${d.unignore}/ignore`, {on: false}); toast("Restored – it'll show again after the next scan."); refresh();
+      await api("POST", `/api/issues/${d.unignore}/ignore`, {on: false}); toast("Restored – it'll show again after the next check."); refresh();
     } else if (d.undo || d.force) {
       const id = d.undo || d.force;
       t.disabled = true; t.innerHTML = '<span class="spin"></span>';
@@ -496,12 +579,12 @@ document.addEventListener("change", async e => {
   if (t.dataset.keep) { keepChoice[t.dataset.keep] = t.value; render(); return; }
   try {
     if (t.id === "autoFix") S.settings = await api("POST", "/api/settings", {auto_fix: t.checked});
-    else if (t.id === "every") { S.settings = await api("POST", "/api/settings", {scan_every_hours: t.value}); toast("Saved."); }
+    else if (t.id === "every") S.settings = await api("POST", "/api/settings", {scan_every_hours: Number(t.value)});
     else if (t.dataset.kindAuto) {
       const kinds = [...document.querySelectorAll("[data-kind-auto]")].filter(x => x.checked).map(x => x.dataset.kindAuto);
       S.settings = await api("POST", "/api/settings", {auto_kinds: kinds});
-    }
-    render();
+    } else return;
+    render(); toast("Saved.");
   } catch (err) { toast(err.message, true); }
 });
 refresh();
