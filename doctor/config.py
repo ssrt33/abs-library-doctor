@@ -8,9 +8,14 @@ def _bool(name, default):
 
 # Your Audiobookshelf server, as the doctor container can reach it. Include the sub-path if you
 # use one, e.g. http://192.168.1.10:13378 or https://audiobooks.example.com/audiobookshelf
-ABS_URL = os.environ.get("ABS_URL", "http://audiobookshelf:13378").rstrip("/")
+ABS_URL = os.environ.get("ABS_URL", "http://audiobookshelf:13378").strip().strip("'\"").rstrip("/")
+if ABS_URL and "://" not in ABS_URL:
+    ABS_URL = "http://" + ABS_URL  # "192.168.0.10:13378" works too
 # An API key from Audiobookshelf (Settings > API Keys) for a user that can update and upload.
-ABS_TOKEN = os.environ.get("ABS_TOKEN", "").strip()
+# Spaces, line breaks and quotes are removed, in case the key got wrapped in the compose file.
+ABS_TOKEN = "".join(os.environ.get("ABS_TOKEN", "").split()).strip("'\"")
+if ABS_TOKEN.lower().startswith("bearer"):
+    ABS_TOKEN = ABS_TOKEN[6:]
 # Only look at these libraries (names or ids, comma separated). Empty = every book library.
 LIBRARIES = [x.strip() for x in os.environ.get("LIBRARIES", "").split(",") if x.strip()]
 
