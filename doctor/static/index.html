@@ -315,7 +315,11 @@ function render(){
   const b = [];
   if (!S.configured) b.push(`<div class="banner bad"><div><b>Not connected to Audiobookshelf yet</b>Create an API key in Audiobookshelf under <code>Settings → API Keys</code>, then set <code>ABS_TOKEN</code> (and <code>ABS_URL</code>) on this container and restart it.</div></div>`);
   if (S.scan.error) b.push(`<div class="banner bad"><div><b>The last scan didn't finish</b>${esc(S.scan.error)}</div></div>`);
-  if (S.configured && !S.can_move) b.push(`<div class="banner warn"><div><b>Merging discs and removing copies are off</b>${esc(S.can_move_reason)} Everything else still works.</div></div>`);
+  if (S.overlaps && S.overlaps.length) {
+    const o = S.overlaps[0];
+    b.push(`<div class="banner bad"><div><b>Your library scans the same books twice</b>The library folder <code>${esc(o.inner)}</code> is inside <code>${esc(o.outer)}</code>, which is also a library folder, so every book under it shows up twice. In Audiobookshelf go to <code>Settings → Libraries</code>, edit <b>${esc(o.outer_lib)}</b>, and keep only the folder that holds your audiobooks. Until then, merging and removing copies stay off so nothing real gets moved.</div></div>`);
+  }
+  if (S.configured && !S.can_move && !(S.overlaps && S.overlaps.length)) b.push(`<div class="banner warn"><div><b>Merging discs and removing copies are off</b>${esc(S.can_move_reason)} Everything else still works.</div></div>`);
   else if (S.configured && !S.trash_mounted) b.push(`<div class="banner warn"><div><b>The trash folder isn't a mounted volume</b>Copies moved there would vanish when the container is rebuilt. Mount a folder at <code>/trash</code>.</div></div>`);
   if (S.errors && S.errors.length) b.push(`<div class="banner warn"><div><b>Some series lookups failed</b>${S.errors.slice(0, 3).map(esc).join("<br>")}</div></div>`);
   $("#banners").innerHTML = b.join("");

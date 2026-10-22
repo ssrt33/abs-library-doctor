@@ -41,8 +41,13 @@ def _check_all(abs_api, lookups=True):
         items += abs_api.items_full(abs_api.item_ids(lib["id"]))
     _step(f"Checking {len(items)} books")
     ok, _why = fixes.can_move()
+    overlaps = checks.folder_overlaps(libs)
+    if overlaps:
+        ok = False  # moving files while folders overlap could take the only real copy
     res = checks.run(items, abs_api, in_progress=_in_progress(abs_api), can_move=ok, lookups=lookups)
-    res["libraries"] = [{"id": l["id"], "name": l["name"]} for l in libs]
+    res["libraries"] = [{"id": l["id"], "name": l["name"], "folders": [f["fullPath"] for f in l.get("folders") or []]}
+                        for l in libs]
+    res["overlaps"] = overlaps
     return res
 
 
@@ -57,6 +62,7 @@ def _publish(res):
         st["errors"] = res["errors"]
         st["books"] = res["books"]
         st["libraries"] = res.get("libraries", [])
+        st["overlaps"] = res.get("overlaps", [])
         st["last_scan"] = time.time()
         store.save()
 

@@ -101,6 +101,19 @@ def _trash_root():
     return os.path.join(config.TRASH_DIR, time.strftime("%Y-%m-%d %H%M%S"))
 
 
+def _same_files_guard(books):
+    """Refuse when two items are really the same folder, or one sits inside another."""
+    seen = []
+    for b in books:
+        p = os.path.realpath(to_local(b["path"]))
+        for q, other in seen:
+            if p == q or p.startswith(q + os.sep) or q.startswith(p + os.sep) or \
+                    (os.path.exists(p) and os.path.exists(q) and os.path.samefile(p, q)):
+                raise FixError(f"“{b['rel']}” and “{other['rel']}” are the same files on disk "
+                               "(overlapping library folders), so nothing was moved.")
+        seen.append((p, b))
+
+
 # ---------------------------------------------------------------- metadata
 
 def _abs_payload(fields):
@@ -228,6 +241,7 @@ def apply_merge(abs_api, fix):
     if not ok:
         raise FixError(why)
     books = [_current(abs_api, i) for i in fix["order"]]
+    _same_files_guard(books)
     for b in books:
         if b["missing"] or b["is_file"] or not b["files"]:
             raise Stale(f"“{b['rel']}” can't be merged right now.")
@@ -312,6 +326,7 @@ def apply_dedupe(abs_api, fix):
         raise FixError(why)
     keep = _current(abs_api, fix["keep"])
     others = [_current(abs_api, i) for i in fix["remove"]]
+    _same_files_guard([keep] + others)
     root = os.path.join(_trash_root(), "duplicates")
     moves, meta = [], {}
     try:

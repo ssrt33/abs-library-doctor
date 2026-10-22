@@ -36,6 +36,8 @@ def index():
 def state():
     s = store.snapshot()
     ok, why = fixes.can_move()
+    if s.get("overlaps"):
+        ok, why = False, "Library folders overlap."
     s["can_move"] = ok
     s["can_move_reason"] = why
     s["trash_mounted"] = os.path.ismount(config.TRASH_DIR)

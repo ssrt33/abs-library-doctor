@@ -157,3 +157,57 @@ def test_issue_ids_are_stable():
     assert a["issues"][0]["id"] != b["issues"][0]["id"]  # different items → different ids
     x = mk()
     assert run(x)["issues"][0]["id"] == run(x)["issues"][0]["id"]
+
+
+# ---- overlapping library folders (the same files seen twice)
+
+def twin(it, rel):
+    """Same folder on disk, seen again through an outer library folder."""
+    import copy
+    t = copy.deepcopy(it)
+    t["id"] = it["id"] + "-twin"
+    t["relPath"] = rel
+    return t
+
+
+def test_same_folder_twice_is_not_a_duplicate():
+    a = item("Not Till We Are Lost", ["Dennis E. Taylor"], "Dennis E. Taylor/Not Till We Are Lost")
+    a["path"] = "/Media/audiobooks/Dennis E. Taylor/Not Till We Are Lost"
+    a["ino"] = "555"
+    b = twin(a, "audiobooks/Dennis E. Taylor/Not Till We Are Lost")
+    res = run([a, b])
+    assert kinds(res) == ["double_scanned"]
+    assert res["issues"][0]["fix"] is None
+
+
+def test_twins_of_discs_still_offer_one_merge():
+    discs = []
+    for n in (1, 2):
+        d = item("The Broker", ["John Grisham"], f"G/The Broker Disc {n}", durs=(60.0 + n,))
+        d["path"] = f"/Media/audiobooks/G/The Broker Disc {n}"
+        d["ino"] = f"9{n}"
+        discs += [d, twin(d, f"audiobooks/G/The Broker Disc {n}")]
+    res = run(discs)
+    assert kinds(res) == ["double_scanned", "double_scanned", "multi_disc"]  # one notice per folder
+    assert len(next(i for i in res["issues"] if i["kind"] == "multi_disc")["books"]) == 2
+
+
+def test_folder_overlaps():
+    libs = [{"name": "audiobooks", "folders": [{"fullPath": "/Media"}, {"fullPath": "/Media/audiobooks"}]}]
+    assert checks.folder_overlaps(libs) == [{"outer": "/Media", "inner": "/Media/audiobooks",
+                                             "outer_lib": "audiobooks", "inner_lib": "audiobooks"}]
+    assert checks.folder_overlaps([{"name": "x", "folders": [{"fullPath": "/a"}, {"fullPath": "/ab"}]}]) == []
+
+
+def test_dedupe_refuses_same_files(tmp_path, monkeypatch):
+    import pytest
+    from doctor import fixes
+    monkeypatch.setattr("doctor.config.PATH_MAP", "/Media=" + str(tmp_path))
+    (tmp_path / "audiobooks" / "Book").mkdir(parents=True)
+    a = {"path": "/Media/audiobooks/Book", "rel": "Book"}
+    b = {"path": "/Media/audiobooks/Book/", "rel": "audiobooks/Book"}
+    with pytest.raises(fixes.FixError):
+        fixes._same_files_guard([a, b])
+    c = {"path": "/Media/audiobooks", "rel": "audiobooks"}
+    with pytest.raises(fixes.FixError):
+        fixes._same_files_guard([c, a])

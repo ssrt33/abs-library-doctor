@@ -45,6 +45,9 @@ KINDS = {
                                "Your number differs from Audible's. Left for you, since reading order can differ."),
     "volume_set": ("Series", "Volumes listed as separate books", False,
                    "Groups numbered volumes (e.g. Pimsleur lessons 1-5, 6-10…) into one series, in order."),
+    "double_scanned": ("Library setup", "Same files listed twice", False,
+                       "Two of the library's folders overlap, so Audiobookshelf lists these books twice. "
+                       "They aren't copies; fix the library folders (see the banner)."),
     "duplicate": ("Duplicates & discs", "Duplicate copies", False,
                   "Keeps the best copy and moves the others to the trash folder (not deleted)."),
     "multi_disc": ("Duplicates & discs", "One book split into discs", False,
@@ -79,6 +82,7 @@ def view(it):
         "files": [{"ino": a["ino"], "name": a["metadata"]["filename"], "path": a["metadata"]["path"]} for a in files],
         "durs": [round(a.get("duration") or 0, 1) for a in files],
         "added": it.get("addedAt") or 0,
+        "ino": str(it.get("ino") or ""),
         "desc": bool(md.get("description")),
     }
 
@@ -284,6 +288,28 @@ def _best(books, in_progress):
                                      bool(b["series"]), not COPY_NAME.search(b["rel"]), b["size"], -b["added"]))
 
 
+def check_double_scanned(books):
+    """The same folder seen twice (overlapping library folders). These are NOT copies: both items point
+    at the same files, and "removing" one would move the only real copy. Report, never fix.
+    Returns (issues, books with the twins left out)."""
+    issues, unique, seen, twins = [], [], {}, defaultdict(list)
+    for b in sorted(books, key=lambda b: (len(b["rel"]), natural_key(b["rel"]))):
+        keys = [x for x in (("p", b["path"].rstrip("/")), ("i", b["ino"])) if x[1]]
+        first = next((seen[k] for k in keys if k in seen), None)
+        if first is not None:
+            twins[first["id"]].append(b)
+            continue
+        unique.append(b)
+        for k in keys:
+            seen[k] = b
+    for first_id, others in twins.items():
+        first = next(b for b in unique if b["id"] == first_id)
+        issues.append(_issue("double_scanned", [first] + others,
+                             f"{first['title']} – listed {len(others) + 1} times, same files",
+                             plan=[first["rel"]] + [o["rel"] for o in others], key="twins:" + first["path"]))
+    return issues, unique
+
+
 def check_duplicates_and_discs(books, in_progress, can_move):
     issues = []
     groups = defaultdict(list)
@@ -461,7 +487,20 @@ def run(items, abs_api=None, in_progress=(), can_move=False, lookups=True):
             if i:
                 issues.append(i)
     issues += vol_issues
-    issues += check_duplicates_and_discs(books, set(in_progress), can_move)
+    twin_issues, unique_books = check_double_scanned([b for b in books if not b["missing"]])
+    issues += twin_issues
+    issues += check_duplicates_and_discs(unique_books, set(in_progress), can_move)
     report, series_issues, errors = series_report(books, lookups)
     issues += series_issues
     return {"issues": issues, "series": report, "errors": errors, "books": len(books)}
+
+
+def folder_overlaps(libraries):
+    """Library folders that sit inside other folders of the same library (or another library)."""
+    folders = [(l["name"], f["fullPath"].rstrip("/")) for l in libraries for f in l.get("folders") or []]
+    out = []
+    for name_a, a in folders:
+        for name_b, b in folders:
+            if a != b and b.startswith(a + "/"):
+                out.append({"outer": a, "inner": b, "outer_lib": name_a, "inner_lib": name_b})
+    return out
