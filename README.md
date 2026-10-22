@@ -90,7 +90,7 @@ copies; the page tells you if they're off.
 |---|---|---|
 | `ABS_URL` | `http://audiobookshelf:13378` | Audiobookshelf address, with sub-path if any |
 | `ABS_TOKEN` | | API key (required) |
-| `LIBRARIES` | all book libraries | Names or ids, comma separated |
+| `LIBRARIES` | all book libraries | Names or ids, comma separated. The id is in the library's address in Audiobookshelf (`…/library/<id>`); use it when two libraries share a name |
 | `PATH_MAP` | `/audiobooks=/audiobooks` | `abs_path=local_path`, comma separated for several |
 | `TRASH_DIR` | `/trash` | Where copies and leftovers are moved |
 | `AUTO_FIX` | `true` | Starting value (change it on the page) |
