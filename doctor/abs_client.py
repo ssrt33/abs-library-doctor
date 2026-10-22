@@ -12,6 +12,31 @@ class ABSError(Exception):
     pass
 
 
+def _explain(e, method, path, url):
+    """Turn an HTTP error into something that says what to change."""
+    body = e.read().decode("utf-8", "replace")
+    headers = {k.lower(): v for k, v in (e.headers or {}).items()}
+    from_proxy = ("cf-ray" in headers or "cloudflare" in headers.get("server", "").lower()
+                  or body.lstrip().lower().startswith(("<!doctype", "<html")))
+    if from_proxy and e.code in (401, 403, 429, 503):
+        who = "Cloudflare" if "cf-ray" in headers or "cloudflare" in headers.get("server", "").lower() \
+            else "A proxy in front of Audiobookshelf"
+        return (f"{who} blocked the request to {url} ({e.code}), so it never reached Audiobookshelf. "
+                f"Set ABS_URL to the server's local address instead, e.g. http://192.168.1.10:13378.")
+    if e.code == 401:
+        return ("Audiobookshelf didn't accept the API key (401). Check ABS_TOKEN is the whole key, "
+                "and that the key is switched on under Settings > API Keys.")
+    if e.code == 403:
+        if "/libraries/" in path or path.endswith("/libraries"):
+            return ("Audiobookshelf says the API key's user can't use this library (403). "
+                    "Make the key for an admin user, or give that user access to the library.")
+        if method != "GET":
+            return (f"Audiobookshelf won't let the API key's user make changes ({method} {path}, 403). "
+                    "The key's user needs permission to update and upload (an admin user is easiest).")
+        return f"Audiobookshelf refused {method} {path} (403): {body[:150]}"
+    return f"{method} {path} failed: {e.code} {body[:200]}"
+
+
 class ABS:
     def __init__(self, url=None, token=None):
         self.url = (url or config.ABS_URL).rstrip("/")
@@ -22,16 +47,15 @@ class ABS:
         r = urllib.request.Request(self.url + path, data=data, method=method)
         r.add_header("Authorization", "Bearer " + self.token)
         r.add_header("Accept", "application/json")
+        # Cloudflare and some proxies block Python's default user agent outright.
+        r.add_header("User-Agent", "abs-library-doctor/1.0 (+https://github.com/ssrt33/abs-library-doctor)")
         if data is not None:
             r.add_header("Content-Type", "application/json")
         try:
             with urllib.request.urlopen(r, timeout=timeout) as resp:
                 raw = resp.read()
         except urllib.error.HTTPError as e:
-            detail = e.read().decode("utf-8", "replace")[:200]
-            if e.code in (401, 403):
-                raise ABSError(f"Audiobookshelf refused the API key ({e.code}). Check ABS_TOKEN.") from e
-            raise ABSError(f"{method} {path} failed: {e.code} {detail}") from e
+            raise ABSError(_explain(e, method, path, self.url)) from e
         except urllib.error.URLError as e:
             raise ABSError(f"Can't reach Audiobookshelf at {self.url}: {e.reason}") from e
         if not raw:
