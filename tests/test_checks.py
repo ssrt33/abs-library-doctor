@@ -211,3 +211,29 @@ def test_dedupe_refuses_same_files(tmp_path, monkeypatch):
     c = {"path": "/Media/audiobooks", "rel": "audiobooks"}
     with pytest.raises(fixes.FixError):
         fixes._same_files_guard([c, a])
+
+
+def test_volume_set_fills_gap_in_existing_series():
+    vols = []
+    for n, r in enumerate(("1-5", "6-10", "11-15", "16-20", "21-25", "26-30"), 1):
+        series = [] if n == 5 else [("Pimsleur Spanish", str(n))]
+        vols.append(item(f"Spanish Level 1 Lessons {r}", ["Pimsleur"], f"P/{r}", series=series))
+    res = run(vols)
+    vs = [i for i in res["issues"] if i["kind"] == "volume_set"]
+    assert len(vs) == 1 and vs[0]["summary"] == "Pimsleur Spanish – 1 missing number"
+    ops = vs[0]["fix"]["ops"]
+    assert len(ops) == 1 and ops[0]["item"] == vols[4]["id"] and ops[0]["set"] == {"series": [["Pimsleur Spanish", "5"]]}
+
+
+def test_volume_set_complete_series_is_left_alone():
+    vols = [item(f"Spanish Level 1 Lessons {r}", ["Pimsleur"], f"P/{r}", series=[("Pimsleur Spanish", str(n))])
+            for n, r in enumerate(("1-5", "6-10"), 1)]
+    assert not [i for i in run(vols)["issues"] if i["kind"] == "volume_set"]
+
+
+def test_copy_outside_staging_folder_is_kept():
+    a = item("The Broker", ["John Grisham"], "audiobooks/untagged/The Broker (2006)", durs=(300.0,), cover=True)
+    b = item("The Broker", ["John Grisham"], "audiobooks/The Broker (2006)", durs=(300.2,))
+    dup = run([a, b])["issues"][0]
+    assert dup["kind"] == "duplicate" and dup["fix"]["keep"] == b["id"]
+    assert [c["id"] for c in dup["copies"]] == [b["id"], a["id"]]

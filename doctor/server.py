@@ -61,7 +61,8 @@ def scan_now():
 
 @app.post("/api/issues/<issue_id>/fix")
 def fix(issue_id):
-    return jsonify(engine.fix_issue(issue_id) and {"ok": True})
+    body = request.get_json(silent=True) or {}
+    return jsonify(engine.fix_issue(issue_id, keep=body.get("keep")) and {"ok": True})
 
 
 @app.post("/api/issues/fix-kind/<kind>")

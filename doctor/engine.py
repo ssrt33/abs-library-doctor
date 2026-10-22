@@ -147,7 +147,7 @@ def _notify(fixed, res):
     notify("Library Doctor", f"Fixed {len(fixed)} thing(s) on its own. {open_n} waiting for you.")
 
 
-def fix_issue(issue_id, rescan=True):
+def fix_issue(issue_id, rescan=True, keep=None):
     """Apply one open issue's fix (from the page)."""
     with store.lock():
         issue = next((i for i in store.get()["issues"] if i["id"] == issue_id), None)
@@ -159,7 +159,16 @@ def fix_issue(issue_id, rescan=True):
     try:
         with store.lock():
             store.get()["scan"] = {"running": True, "step": f"Fixing: {issue['summary']}", "error": None}
-        rec = fixes.apply(abs_api, issue["fix"])
+        fix = dict(issue["fix"])
+        if keep and fix["type"] == "dedupe":
+            ids = [fix["keep"]] + fix["remove"]
+            if keep not in ids:
+                raise fixes.FixError("That copy isn't part of this issue.")
+            fix["keep"], fix["remove"] = keep, [i for i in ids if i != keep]
+            issue = dict(issue, plan=[p for p in issue["plan"]])  # history shows what was really done
+            rels = {c["id"]: c["rel"] for c in issue.get("copies", [])}
+            issue["plan"] = [f"Keep: {rels.get(keep, keep)}"] + [f"Move to trash: {rels.get(i, i)}" for i in fix["remove"]]
+        rec = fixes.apply(abs_api, fix)
         entry = _record(issue, rec, auto=False)
         with store.lock():
             st = store.get()

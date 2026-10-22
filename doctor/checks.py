@@ -21,6 +21,8 @@ from .textutil import (RANGE, clean_seq, credential_text, disc_number, fold, has
                        natural_key, safe_name, series_key, seq_sort, split_read_by, strip_unabridged, title_key)
 
 log = logging.getLogger("doctor")
+# Folders that hold not-yet-sorted books; a copy elsewhere is the better one to keep.
+STAGING = re.compile(r"(^|/)(untagged|unsorted|unprocessed|incoming|imports?|staging|temp|tmp|downloads?|new)(/|$)", re.I)
 COPY_NAME = re.compile(r"\bcopy\b|\(\d+\)\s*$|\bduplicate\b", re.I)
 
 # kind -> (group, label, safe by default, description)
@@ -284,7 +286,8 @@ def _same_audio(a, b):
 
 
 def _best(books, in_progress):
-    return max(books, key=lambda b: (b["id"] in in_progress, b["cover"], b["desc"], len(b["narrators"]) > 0,
+    return max(books, key=lambda b: (b["id"] in in_progress, not STAGING.search(b["rel"]),
+                                     b["cover"], b["desc"], len(b["narrators"]) > 0,
                                      bool(b["series"]), not COPY_NAME.search(b["rel"]), b["size"], -b["added"]))
 
 
@@ -340,7 +343,10 @@ def check_duplicates_and_discs(books, in_progress, can_move):
                 note = "A copy being removed has listening progress; it won't carry over."
             if not can_move:
                 fix, note = None, "Mount the library and a trash folder to fix this from here (see README)."
-            issues.append(_issue("duplicate", c, f"{keep['title']} – {len(c)} copies", plan=plan, fix=fix, note=note))
+            iss = _issue("duplicate", c, f"{keep['title']} – {len(c)} copies", plan=plan, fix=fix, note=note)
+            iss["copies"] = [{"id": b["id"], "rel": b["rel"], "cover": b["cover"], "progress": b["id"] in in_progress,
+                              "files": len(b["files"])} for b in sorted(c, key=lambda b: b is not keep)]
+            issues.append(iss)
         if dupes:
             continue  # sort the copies out first; disc merging shows up on the next scan
         nums = [disc_number(b["rel"].rsplit("/", 1)[-1], b["title"]) for b in grp]
@@ -381,20 +387,48 @@ def check_volume_sets(books):
             continue
         grp.sort(key=lambda x: x[0])
         bs = [b for _, _, b in grp]
-        current = {series_key(n) for b in bs for n, s in b["series"] if s and n not in bogus_series(b)}
-        if len(current) == 1 and all(any(s for _, s in b["series"]) for b in bs):
-            continue  # already a proper numbered series
+        handled.update(b["id"] for b in bs)
+        # Is there already a numbered series most of these volumes share? Then fill its gaps.
+        counts, names = defaultdict(int), defaultdict(list)
+        for b in bs:
+            for n, sq in b["series"]:
+                if clean_seq(sq) and n not in bogus_series(b):
+                    counts[series_key(n)] += 1
+                    names[series_key(n)].append(n)
+        existing = max(counts, key=counts.get) if counts else None
+        if existing and counts[existing] >= 2:
+            name = max(set(names[existing]), key=names[existing].count)
+            used = {clean_seq(sq) for b in bs for n, sq in b["series"] if series_key(n) == existing}
+            ops, changes, skipped = [], [], []
+            for i, b in enumerate(bs, 1):
+                mine = [sq for n, sq in b["series"] if series_key(n) == existing and clean_seq(sq)]
+                if mine:
+                    continue  # already numbered in that series; leave it alone
+                if str(i) in used:
+                    skipped.append(strip_unabridged(b["title"]).split(":")[0])
+                    continue  # its place in the order is taken; don't guess
+                keep = [sq for sq in b["series"] if sq[0] not in bogus_series(b) and series_key(sq[0]) != existing]
+                new = keep + [[name, str(i)]]
+                ops.append(_meta_fix(b, {"series": new}))
+                changes.append({"field": strip_unabridged(b["title"]).split(":")[0],
+                                "before": _series_txt(b["series"]), "after": _series_txt(new)})
+            if not ops:
+                continue
+            note = f"Couldn't tell where {', '.join(skipped)} belongs; set it by hand." if skipped else None
+            issues.append(_issue("volume_set", [b for b in bs], f"{name} – {len(ops)} missing number"
+                                 f"{'s' if len(ops) != 1 else ''}", changes, {"type": "metadata_many", "ops": ops},
+                                 note=note, key="fill:" + ",".join(sorted(b["id"] for b in bs))))
+            continue
         author = bs[0]["authors"][0] if bs[0]["authors"] else ""
         base = grp[0][1]
         name = base if fold(author) in fold(base) or not author else f"{author} {base}"
         ops, changes = [], []
         for i, b in enumerate(bs, 1):
-            keep = [s for s in b["series"] if s[0] not in bogus_series(b) and series_key(s[0]) != series_key(name)]
+            keep = [sq for sq in b["series"] if sq[0] not in bogus_series(b) and series_key(sq[0]) != series_key(name)]
             new = keep + [[name, str(i)]]
             ops.append(_meta_fix(b, {"series": new}))
             changes.append({"field": strip_unabridged(b["title"]).split(":")[0], "before": _series_txt(b["series"]),
                             "after": _series_txt(new)})
-            handled.add(b["id"])
         issues.append(_issue("volume_set", bs, f"{name} – {len(bs)} volumes", changes,
                              {"type": "metadata_many", "ops": ops}))
     return issues, handled
