@@ -51,6 +51,21 @@ def _check_all(abs_api, lookups=True):
     return res
 
 
+def series_row_key(r):
+    """One key per series however it was spelled ("The Enemy", "the enemy", "Enemy Series")."""
+    return checks.series_key(r.get("key") or r["name"])
+
+
+def dedupe_series(rows):
+    """Collapse rows for the same series, preferring a fresh one over one kept from before."""
+    best = {}
+    for r in rows:
+        k = series_row_key(r)
+        if k not in best or (best[k].get("stale") and not r.get("stale")):
+            best[k] = r
+    return sorted(best.values(), key=lambda r: r["name"].lower())
+
+
 def merge_series(old, new):
     """Keep the series list steady between checks.
 
@@ -59,12 +74,12 @@ def merge_series(old, new):
       - a series that vanishes stays listed until it has been missing from two checks in a row;
       - a series whose Audible lookup failed keeps its last good list of missing books.
     """
-    def key(r):
-        return r.get("key") or r["name"].lower()
-    prev = {key(r): r for r in old}
+    prev = {}
+    for r in dedupe_series(old):
+        prev[series_row_key(r)] = r
     out, seen = [], set()
     for r in new:
-        k = key(r)
+        k = series_row_key(r)
         seen.add(k)
         p = prev.get(k)
         if r.get("lookup_failed") and p and p.get("found"):
@@ -79,7 +94,7 @@ def merge_series(old, new):
         absent = p.get("absent", 0) + 1
         if absent < 2:
             out.append({**p, "key": k, "absent": absent, "stale": True})
-    return sorted(out, key=lambda r: r["name"].lower())
+    return dedupe_series(out)
 
 
 def _publish(res):

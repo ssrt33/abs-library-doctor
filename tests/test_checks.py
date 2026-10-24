@@ -257,3 +257,15 @@ def test_series_keep_last_list_when_audible_fails():
     failed = {"key": "legion", "name": "Legion", "owned": [1, 2], "missing": [], "found": False, "lookup_failed": True}
     r = merge_series([good], [failed])[0]
     assert r["found"] and r["missing"] == good["missing"] and r["owned"] == [1, 2] and r["stale"]
+
+
+def test_series_spelled_differently_are_one_series():
+    from doctor.engine import merge_series, dedupe_series
+    old = [{"key": "the enemy", "name": "The Enemy", "owned": [1], "missing": [], "found": True},
+           {"name": "A Jack Ryan Jr. Novel", "owned": [1], "missing": [], "found": True}]  # saved by an older version
+    new = [{"key": "enemy", "name": "The Enemy", "owned": [1], "missing": [], "found": True},
+           {"key": "a jack ryan jr novel", "name": "A Jack Ryan Jr. Novel", "owned": [1], "missing": [], "found": True}]
+    out = merge_series(old, new)
+    assert [r["name"] for r in out] == ["A Jack Ryan Jr. Novel", "The Enemy"] and not any(r.get("stale") for r in out)
+    doubled = [dict(new[0]), {**old[0], "stale": True, "absent": 1}]
+    assert [r.get("stale") for r in dedupe_series(doubled)] == [None]

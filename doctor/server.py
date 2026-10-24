@@ -38,6 +38,7 @@ def state():
     ok, why = fixes.can_move()
     if s.get("overlaps"):
         ok, why = False, "Library folders overlap."
+    s["series"] = engine.dedupe_series(s.get("series") or [])  # tidy lists saved by older versions
     s["can_move"] = ok
     s["can_move_reason"] = why
     s["trash_mounted"] = os.path.ismount(config.TRASH_DIR)
