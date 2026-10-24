@@ -237,3 +237,23 @@ def test_copy_outside_staging_folder_is_kept():
     dup = run([a, b])["issues"][0]
     assert dup["kind"] == "duplicate" and dup["fix"]["keep"] == b["id"]
     assert [c["id"] for c in dup["copies"]] == [b["id"], a["id"]]
+
+
+# ---- the series list stays put between checks
+
+def test_series_survive_one_incomplete_check():
+    from doctor.engine import merge_series
+    rapp = {"key": "mitch rapp", "name": "Mitch Rapp", "owned": [1], "missing": [{"sequence": "9"}], "found": True, "total": 25}
+    after_one = merge_series([rapp], [])            # check caught ABS mid-rescan: no series seen
+    assert after_one[0]["name"] == "Mitch Rapp" and after_one[0]["missing"] == rapp["missing"] and after_one[0]["stale"]
+    assert merge_series(after_one, []) == []         # gone two checks running: really gone
+    back = merge_series(after_one, [dict(rapp)])     # seen again: back to normal
+    assert "stale" not in back[0] and "absent" not in back[0]
+
+
+def test_series_keep_last_list_when_audible_fails():
+    from doctor.engine import merge_series
+    good = {"key": "legion", "name": "Legion", "owned": [1], "missing": [{"sequence": "2"}], "found": True, "total": 3}
+    failed = {"key": "legion", "name": "Legion", "owned": [1, 2], "missing": [], "found": False, "lookup_failed": True}
+    r = merge_series([good], [failed])[0]
+    assert r["found"] and r["missing"] == good["missing"] and r["owned"] == [1, 2] and r["stale"]

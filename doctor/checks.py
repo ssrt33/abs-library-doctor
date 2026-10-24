@@ -452,7 +452,7 @@ def series_report(books, lookups):
     for key, entries in sorted(by_series.items()):
         display = sorted(names[key], key=len)[0]
         owned = [{"id": b["id"], "title": b["title"], "sequence": clean_seq(s) or s} for b, _n, s in entries]
-        row = {"name": display, "owned": sorted(owned, key=lambda o: seq_sort(o["sequence"])),
+        row = {"key": key, "name": display, "owned": sorted(owned, key=lambda o: seq_sort(o["sequence"])),
                "missing": [], "total": None, "found": False, "url": None}
         if lookups:
             try:
@@ -487,6 +487,7 @@ def series_report(books, lookups):
             except Exception as e:
                 log.info("Series lookup failed for %s: %s", display, e)
                 errors.append(f"{display}: {e}")
+                row["lookup_failed"] = True
         report.append(row)
     return report, issues, errors
 

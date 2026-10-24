@@ -51,6 +51,37 @@ def _check_all(abs_api, lookups=True):
     return res
 
 
+def merge_series(old, new):
+    """Keep the series list steady between checks.
+
+    A check can catch Audiobookshelf mid-rescan and see only some books, or Audible can fail to
+    answer. Neither should wipe what you were looking at, so:
+      - a series that vanishes stays listed until it has been missing from two checks in a row;
+      - a series whose Audible lookup failed keeps its last good list of missing books.
+    """
+    def key(r):
+        return r.get("key") or r["name"].lower()
+    prev = {key(r): r for r in old}
+    out, seen = [], set()
+    for r in new:
+        k = key(r)
+        seen.add(k)
+        p = prev.get(k)
+        if r.get("lookup_failed") and p and p.get("found"):
+            r = {**p, "owned": r["owned"], "name": r["name"], "key": k, "stale": True}
+        else:
+            r = {**r, "key": k}
+        r.pop("absent", None)
+        out.append(r)
+    for k, p in prev.items():
+        if k in seen:
+            continue
+        absent = p.get("absent", 0) + 1
+        if absent < 2:
+            out.append({**p, "key": k, "absent": absent, "stale": True})
+    return sorted(out, key=lambda r: r["name"].lower())
+
+
 def _publish(res):
     with store.lock():
         st = store.get()
@@ -58,7 +89,7 @@ def _publish(res):
         for i in res["issues"]:
             i["ignored"] = i["id"] in ignored
         st["issues"] = res["issues"]
-        st["series"] = res["series"]
+        st["series"] = merge_series(st.get("series") or [], res["series"])
         st["errors"] = res["errors"]
         st["books"] = res["books"]
         st["libraries"] = res.get("libraries", [])
